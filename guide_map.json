@@ -1,0 +1,22 @@
+{
+  "환자/입원": {
+    "schema": ["schema_patients.txt"],
+    "guide": "환자 기본정보(나이, 성별, 사망), 입원정보(입퇴원, 재원기간), ICU정보(입실/퇴실, 중환자실) 등은 schema_patients.txt 활용. admittime/dischtime으로 입퇴원 날짜 필터, hospital_expire_flag/dod로 사망 여부 판단, icustays 테이블로 중환자실 재원 정보 처리."
+  },
+  "검사/바이탈": {
+    "schema": ["schema_patients.txt", "schema_events.txt"],
+    "guide": "혈압, 맥박, 체온, 혈당, WBC, Hb 등 검사/바이탈사인과 미생물검사, 감염 관련 데이터는 d_items/d_labitems의 label 기준으로 itemid 추출 후 chartevents/labevents/microbiologyevents 조인. 측정값(valuenum), 검사시각(charttime) 반드시 활용. 균명(org_name), 감수성(interpretation) 등 미생물 정보도 포함."
+  },
+  "진단/시술": {
+    "schema": ["schema_patients.txt", "schema_diagproc.txt"],
+    "guide": "진단명/시술명 검색 시 반드시 d_icd_diagnoses(진단), d_icd_procedures(시술)와 long_title/short_title 매핑. ICD-9/10 구분 필요. 코드가 아닌 명칭 검색이면 메타테이블 조인 필수. DRG 정보(drg_code, drg_severity)도 활용 가능."
+  },
+  "약물/투약": {
+    "schema": ["schema_patients.txt", "schema_drugs.txt"],
+    "guide": "약물/항생제 처방, 투약 이력, 수액/투여 관련은 prescriptions, pharmacy, emar, inputevents, ingredientevents 테이블 활용. drug_type, drug/medication, starttime/endtime 컬럼 사용. 항생제 분류는 drug_type 참고. 수액/투여량(amount), 속도(rate) 정보도 포함."
+  },
+  "임상시험": {
+    "schema": ["schema_patients.txt", "schema_events.txt", "schema_diagproc.txt", "schema_drugs.txt", "schema_trial.txt"],
+    "guide": "임상시험 포함/제외 기준, AE/ADR/SUSAR 등은 모든 조건을 SQL로 변환. 각 기준은 AND/NOT 조건으로 처리. 금기약물/수치/진단 등은 schema_trial.txt의 FAQ/용어설명 반영. 조건이 과도하거나 불분명하면 추가질문 요청."
+  }
+}
