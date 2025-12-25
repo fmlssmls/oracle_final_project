@@ -14,7 +14,7 @@ import re
 import time
 from datetime import datetime
 # === 평가지표 관련 import 추가 ===
-import tiktoken  # OpenAI 토큰 계산
+# import tiktoken  # OpenAI 토큰 계산
 from evaluation_module import (
     evaluate_and_save, get_query_stats, sql_evaluator, estimate_token_usage,
     record_token_usage, get_token_statistics, token_callback,
@@ -40,12 +40,11 @@ CORS(app, resources={
     }
 })
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "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")
-ORACLE_USER = os.getenv("ORACLE_USER", "SYSTEM")
-ORACLE_PW = os.getenv("ORACLE_PW", "oracle_4U")
-ORACLE_HOST = os.getenv("ORACLE_HOST", "localhost")
-ORACLE_PORT = int(os.getenv("ORACLE_PORT", "1521"))
-ORACLE_SERVICE = os.getenv("ORACLE_SERVICE", "xe")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")  # 기본값 제거
+ORACLE_USER = os.getenv("ORACLE_USER", "ADMIN")
+ORACLE_PW = os.getenv("ORACLE_PW")
+ORACLE_SERVICE_NAME = os.getenv("ORACLE_SERVICE_NAME", "oraclefinalproject_high")
+
 
 # app.py에서 수정
 os.environ["LANGCHAIN_TRACING_V2"] = "true"  # LANG**CHAIN**
