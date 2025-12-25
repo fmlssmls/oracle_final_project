@@ -776,14 +776,39 @@ def download_csv():
         'Content-Disposition': 'attachment; filename="result.csv"'
     }
 
+
 def get_db_connection():
+    """Oracle Cloud Autonomous Database 연결 (Wallet 사용)"""
     try:
-        dsn = cx_Oracle.makedsn(ORACLE_HOST, ORACLE_PORT, sid=ORACLE_SERVICE)
-        conn = cx_Oracle.connect(user=ORACLE_USER, password=ORACLE_PW, dsn=dsn)
+        # Wallet 경로 - Render 환경 변수에서 가져옴
+        wallet_location = os.getenv("WALLET_LOCATION", "./wallet")
+        wallet_password = os.getenv("WALLET_PASSWORD", "")
+
+        # TNS_ADMIN 환경 변수 설정 (Wallet 폴더 위치)
+        os.environ["TNS_ADMIN"] = wallet_location
+
+        # Oracle Cloud 연결 정보
+        service_name = os.getenv("ORACLE_SERVICE_NAME", "oraclefinalproject_high")
+        username = os.getenv("ORACLE_USER", "ADMIN")
+        password = os.getenv("ORACLE_PW")
+
+        # DSN 방식으로 연결
+        conn = cx_Oracle.connect(
+            user=username,
+            password=password,
+            dsn=service_name,
+            encoding="UTF-8"
+        )
+
+        print(f"✅ Oracle Cloud DB 연결 성공: {service_name}")
         return conn
+
     except cx_Oracle.Error as e:
         error_obj, = e.args
-        print(f"데이터베이스 연결 오류: {error_obj.message}")
+        print(f"❌ 데이터베이스 연결 오류: {error_obj.message}")
+        return None
+    except Exception as e:
+        print(f"❌ 예상치 못한 오류: {str(e)}")
         return None
 
 @app.route('/login', methods=['POST'])
