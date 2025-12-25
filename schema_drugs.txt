@@ -1,0 +1,168 @@
+# [테이블: PRESCRIPTIONS, PHARMACY, EMAR, EMAR_DETAIL, INGREDIENTEVENTS, INPUTEVENTS, PROCEDUREEVENTS]
+
+PRESCRIPTIONS
+SUBJECT_ID | 환자ID
+HADM_ID | 입원ID
+PHARMACY_ID | 약국ID
+POE_ID | 처방오더ID
+POE_SEQ | 오더순번
+STARTTIME | 시작시각
+STOPTIME | 종료시각
+DRUG_TYPE | 약물분류
+DRUG | 약품명
+
+PHARMACY
+SUBJECT_ID | 환자ID
+HADM_ID | 입원ID
+PHARMACY_ID | 약국ID
+POE_ID | 처방오더ID
+STARTTIME | 시작시각
+STOPTIME | 종료시각
+MEDICATION | 약품명
+
+EMAR
+SUBJECT_ID | 환자ID | 환자, subject
+HADM_ID | 입원ID | 입원, hadm
+EMAR_ID | 투약기록ID | emar, 투약기록, medication admin
+EMAR_SEQ | 투약순번 | 순번, seq, sequence, 투약순서
+POE_ID | 처방오더ID | poe, order id
+PHARMACY_ID | 약국ID | pharmacy, 약국
+CHARTTIME | 투약시각 | 시간, charttime, 투약시간
+MEDICATION | 투약약물 | medication, drug, 약품
+EVENT_TXT | 이벤트텍스트 | event, event txt, 이벤트
+SCHEDULETIME | 투약예정시각 | 예정시각, schedule, 시간
+STORETIME | 저장시각 | 저장, storetime
+
+EMAR_DETAIL
+SUBJECT_ID | 환자ID | 환자, subject
+EMAR_ID | 투약기록ID | emar, 투약기록
+EMAR_SEQ | 투약순번 | 순번, seq, sequence
+PARENT_FIELD_ORDINAL | 부모필드순번 | parent, ordinal
+ADMINISTRATION_TYPE | 투여유형 | 투여방법, type, administration
+PHARMACY_ID | 약국ID | pharmacy, 약국
+BARCODE_TYPE | 바코드유형 | barcode, type
+REASON_FOR_NO_BARCODE | 바코드미사용사유 | 이유, 이유코드, 사유
+DOSE_DUE | 예정투약량 | 예정량, 예정 dose, 투약예정
+DOSE_GIVEN | 실제투약량 | 투약량, given dose, 실제투여
+WILL_REMAINDER_OF_DOSE_BE_GIVEN | 잔여투여예정여부 | 잔여, remainder, 투여예정
+PRODUCT_AMOUNT_GIVEN | 실제투여량 | 투여량, 투약량
+PRODUCT_UNIT | 투여단위 | 단위, unit
+PRODUCT_CODE | 제품코드 | 제품, 코드, product
+PRODUCT_DESCRIPTION | 제품설명 | 설명, product desc
+PRODUCT_DESCRIPTION_OTHER | 기타제품설명 | 기타, 설명
+PRIOR_INFUSION_RATE | 이전주입속도 | 이전, 주입, 속도
+INFUSION_RATE | 주입속도 | infusion rate, 주입, 속도
+INFUSION_RATE_ADJUSTMENT | 주입속도조정 | 조정, 속도조정
+INFUSION_RATE_ADJUSTMENT_AMOUNT | 조정량 | adjustment, 양
+INFUSION_RATE_UNIT | 주입속도단위 | 단위, unit
+ROUTE | 투여경로 | route, 경로, 방법
+INFUSION_COMPLETE | 주입완료 | infusion complete, 완료
+COMPLETION_INTERVAL | 완료간격 | interval, 간격, 완료
+NEW_BAG_HUNG | 새백걸림 | new bag, 백, 걸림
+CONTINUED_INFUSION_IN_OTHER_LOCATION | 타부서주입연속 | continued, infusion, location
+RESTART_INTERVAL | 재시작간격 | restart, interval
+SITE | 부위 | site, 위치
+
+INGREDIENTEVENTS
+SUBJECT_ID | 환자ID | 환자, subject
+HADM_ID | 입원ID | 입원, hadm
+STAY_ID | 스테이ID | stay, icu
+STARTTIME | 시작시각 | 시작, starttime
+ENDTIME | 종료시각 | 종료, endtime
+STORETIME | 저장시각 | 저장, storetime
+ITEMID | 항목ID | item, 코드
+AMOUNT | 투여량 | 양, amount
+AMOUNTUOM | 투여단위 | 단위, unit
+RATE | 투여속도 | 속도, rate
+RATEUOM | 속도단위 | 단위, unit
+ORDERID | 오더ID | 오더, orderid
+LINKORDERID | 연관오더ID | 링크오더, linkorder
+STATUSDESCRIPTION | 상태설명 | 상태, 설명, status
+ORIGINALAMOUNT | 원래투여량 | 원투여, original
+ORIGINALRATE | 원래속도 | 원속도, originalrate
+
+INPUTEVENTS
+SUBJECT_ID | 환자ID | 환자, subject
+HADM_ID | 입원ID | 입원, hadm
+STAY_ID | 스테이ID | stay, icu
+STARTTIME | 시작시각 | 시작, starttime
+ENDTIME | 종료시각 | 종료, endtime
+STORETIME | 저장시각 | 저장, storetime
+ITEMID | 항목ID | item, 코드
+AMOUNT | 투여량 | 양, amount
+AMOUNTUOM | 투여단위 | 단위, unit
+RATE | 투여속도 | 속도, rate
+RATEUOM | 속도단위 | 단위, unit
+ORDERID | 오더ID | 오더, orderid
+LINKORDERID | 연관오더ID | 링크오더, linkorder
+ORDERCATEGORYNAME | 오더카테고리명 | 카테고리, ordercategory
+SECONDARYORDERCATEGORYNAME | 보조오더카테고리 | 보조, secondary, 카테고리
+ORDERCOMPONENTYPEDESCRIPTION | 오더구성유형설명 | 구성, type, 설명
+ORDERCATEGORYDESCRIPTION | 오더카테고리설명 | 카테고리, 설명
+PATIENTWEIGHT | 환자체중 | 체중, 몸무게, weight
+TOTALAMOUNT | 총투여량 | 총량, total, amount
+TOTALAMOUNTUOM | 총투여단위 | 단위, unit
+ISOPENBAG | 오픈백여부 | 오픈, open bag
+STATUSDESCRIPTION | 상태설명 | 상태, 설명, status
+ORIGINALAMOUNT | 원래투여량 | 원투여, original
+ORIGINALRATE | 원래속도 | 원속도, originalrate
+CONTINUEINNEXTDEPT | 다음부서연속 | 부서, continue
+
+PROCEDUREEVENTS
+SUBJECT_ID | 환자ID | 환자, subject
+HADM_ID | 입원ID | 입원, hadm
+STAY_ID | 스테이ID | stay, icu
+STARTTIME | 시작시각 | 시작, starttime
+ENDTIME | 종료시각 | 종료, endtime
+STORETIME | 저장시각 | 저장, storetime
+ITEMID | 항목ID | item, 코드
+VALUE | 값 | value, 값
+VALUEUOM | 단위 | 단위, unit
+LOCATION | 위치 | location, 위치
+LOCATIONCATEGORY | 위치카테고리 | category, location
+ORDERID | 오더ID | order, id
+LINKORDERID | 연관오더ID | link, order
+ORDERCATEGORYNAME | 오더카테고리명 | order, category, name
+ORDERCATEGORYDESCRIPTION | 오더카테고리설명 | order, category, desc
+PATIENTWEIGHT | 환자체중 | weight, 환자, 체중
+ISOPENBAG | 오픈백여부 | open, bag
+CONTINUEINNEXTDEPT | 다음부서연속 | continue, dept
+STATUSDESCRIPTION | 상태설명 | status, desc
+ORIGINALAMOUNT | 원래투여량 | original, amount
+ORIGINALRATE | 원래속도 | original, rate
+
+POE
+POE_ID | 처방오더ID | poe, order id
+POE_SEQ | 오더순번 | 순번, seq
+SUBJECT_ID | 환자ID | 환자, subject
+HADM_ID | 입원ID | 입원, hadm
+ORDERTIME | 오더입력시각 | order, time
+ORDER_TYPE | 오더유형 | type, order
+ORDER_SUBTYPE | 오더하위유형 | subtype, 하위유형
+TRANSACTION_TYPE | 거래유형 | transaction, type
+DISCONTINUE_OF_POE_ID | 중단오더ID | discontinue, order
+DISCONTINUED_BY_POE_ID | 중단처리오더ID | discontinued, order
+ORDER_STATUS | 오더상태 | order, status
+
+POE_DETAIL
+POE_ID | 처방오더ID | poe, order id
+POE_SEQ | 오더순번 | 순번, seq
+SUBJECT_ID | 환자ID | 환자, subject
+FIELD_NAME | 필드명 | name, field
+FIELD_VALUE | 필드값 | value, field
+
+# [FAQ]
+Q: 항생제 처방 환자 비율?
+A: SELECT COUNT(DISTINCT subject_id) / (SELECT COUNT(*) FROM patients) FROM prescriptions WHERE drug_type = 'ANTIBIOTIC'
+
+Q: 최근 3개월간 항생제 처방받은 65세 이상 남자 리스트
+A: SELECT DISTINCT p.subject_id, p.anchor_age, pre.drug, pre.starttime FROM patients p JOIN prescriptions pre ON p.subject_id = pre.subject_id WHERE p.anchor_age >= 65 AND p.gender = 'M' AND pre.drug_type = 'ANTIBIOTIC' AND pre.starttime >= ADD_MONTHS(SYSDATE, -3)
+
+# [유의어]
+"항생제", "antibiotic" → drug_type = 'ANTIBIOTIC'
+"약", "약물", "약제", "medication", "drug" → drug, medication
+
+# [활용팁]
+drug_type: 약물필터
+starttime/endtime: 투여기간, 기간 분석시 활용
+PHARMACY_ID, MEDICATION: 투여 기록, 처방 이력 관리시 사용

@@ -1,0 +1,245 @@
+# MIMIC-IV 임상시험 관련 상세 가이드
+
+## 임상시험 포함/제외 기준 설계 원칙
+
+### 기본 접근법
+임상시험 설계 시 모든 포함/제외 기준을 SQL 조건으로 변환하여 환자 선별을 수행합니다. 각 기준은 AND/OR/NOT 논리 연산자로 조합되며, 복잡한 조건들은 서브쿼리나 CTE를 활용하여 구현합니다.
+
+### 핵심 테이블 활용 전략
+
+#### 환자 기본 정보 기준
+```sql
+-- 나이, 성별, 생존 여부 기준
+SELECT subject_id FROM PATIENTS 
+WHERE anchor_age BETWEEN 18 AND 65 
+  AND gender = 'M' 
+  AND dod IS NULL  -- 생존 환자만
+```
+
+#### 입원 관련 기준
+```sql
+-- 입원 기간, 입원 유형, 사망 여부 기준
+SELECT DISTINCT p.subject_id 
+FROM PATIENTS p
+JOIN ADMISSIONS a ON p.subject_id = a.subject_id
+WHERE a.hospital_expire_flag = 0  -- 퇴원 환자만
+  AND (a.dischtime - a.admittime) >= INTERVAL '3' DAY  -- 3일 이상 입원
+  AND a.admission_type = 'ELECTIVE'  -- 예약 입원만
+```
+
+#### ICU 체류 기준
+```sql
+-- ICU 재원 기간, ICU 유형 기준
+SELECT DISTINCT i.subject_id
+FROM ICUSTAYS i
+WHERE i.los >= 1.0  -- 1일 이상 ICU 체류
+  AND i.first_careunit IN ('MICU', 'SICU')  -- 특정 ICU만
+```
+
+#### 진단 관련 기준
+```sql
+-- 특정 진단 포함/제외
+-- 포함 기준: 심부전 진단 환자
+SELECT DISTINCT d.subject_id
+FROM DIAGNOSES_ICD d
+JOIN D_ICD_DIAGNOSES di ON d.icd_code = di.icd_code 
+WHERE di.long_title LIKE '%heart failure%'
+
+-- 제외 기준: 암 진단 환자 제외
+SELECT subject_id FROM PATIENTS
+WHERE subject_id NOT IN (
+    SELECT DISTINCT d.subject_id
+    FROM DIAGNOSES_ICD d
+    JOIN D_ICD_DIAGNOSES di ON d.icd_code = di.icd_code
+    WHERE di.long_title LIKE '%cancer%' OR di.long_title LIKE '%malignant%'
+)
+```
+
+#### 검사 수치 기준
+```sql
+-- 특정 검사 수치 범위 기준
+-- 크레아티닌 수치 기준 (신기능 평가)
+SELECT DISTINCT l.subject_id
+FROM LABEVENTS l
+JOIN D_LABITEMS dl ON l.itemid = dl.itemid
+WHERE dl.label = 'Creatinine'
+  AND l.valuenum BETWEEN 0.5 AND 2.0  -- 정상 범위
+  AND l.charttime >= (
+      SELECT MIN(admittime) 
+      FROM ADMISSIONS a 
+      WHERE a.subject_id = l.subject_id
+  )  -- 입원 후 검사만
+```
+
+#### 약물 관련 기준
+```sql
+-- 특정 약물 사용/미사용 기준
+-- 금기 약물: 와파린 사용 환자 제외
+SELECT subject_id FROM PATIENTS
+WHERE subject_id NOT IN (
+    SELECT DISTINCT subject_id
+    FROM PRESCRIPTIONS
+    WHERE drug LIKE '%warfarin%'
+)
+
+-- 필수 약물: 인슐린 사용 환자만 포함
+SELECT DISTINCT subject_id
+FROM PRESCRIPTIONS
+WHERE drug LIKE '%insulin%'
+```
+
+#### 시술 관련 기준
+```sql
+-- 특정 시술 시행/미시행 기준
+-- 인공호흡기 사용 환자
+SELECT DISTINCT p.subject_id
+FROM PROCEDURES_ICD p
+JOIN D_ICD_PROCEDURES dp ON p.icd_code = dp.icd_code
+WHERE dp.long_title LIKE '%mechanical ventilation%' 
+   OR dp.long_title LIKE '%intubation%'
+```
+
+### 복합 기준 예시
+
+#### 복잡한 임상시험 선별 기준
+```sql
+-- 예시: 중증 패혈증 환자 대상 임상시험
+WITH eligible_patients AS (
+    -- 1. 기본 인구학적 기준
+    SELECT p.subject_id
+    FROM PATIENTS p
+    WHERE p.anchor_age >= 18  -- 성인
+      AND p.dod IS NULL       -- 생존 환자
+),
+sepsis_patients AS (
+    -- 2. 패혈증 진단 기준
+    SELECT DISTINCT d.subject_id
+    FROM DIAGNOSES_ICD d
+    JOIN D_ICD_DIAGNOSES di ON d.icd_code = di.icd_code
+    WHERE di.long_title LIKE '%sepsis%' 
+       OR di.long_title LIKE '%septic shock%'
+),
+icu_patients AS (
+    -- 3. ICU 입실 기준
+    SELECT DISTINCT subject_id
+    FROM ICUSTAYS
+    WHERE los >= 1.0  -- 최소 1일 ICU 체류
+),
+lab_criteria AS (
+    -- 4. 검사 수치 기준 (락테이트 > 2.0)
+    SELECT DISTINCT l.subject_id
+    FROM LABEVENTS l
+    JOIN D_LABITEMS dl ON l.itemid = dl.itemid
+    WHERE dl.label LIKE '%lactate%'
+      AND l.valuenum > 2.0
+),
+exclusion_criteria AS (
+    -- 5. 제외 기준: 임신, 말기 신질환
+    SELECT DISTINCT subject_id
+    FROM DIAGNOSES_ICD d
+    JOIN D_ICD_DIAGNOSES di ON d.icd_code = di.icd_code
+    WHERE di.long_title LIKE '%pregnancy%'
+       OR di.long_title LIKE '%end stage renal%'
+)
+-- 최종 선별
+SELECT DISTINCT ep.subject_id
+FROM eligible_patients ep
+JOIN sepsis_patients sp ON ep.subject_id = sp.subject_id
+JOIN icu_patients ip ON ep.subject_id = ip.subject_id  
+JOIN lab_criteria lc ON ep.subject_id = lc.subject_id
+WHERE ep.subject_id NOT IN (SELECT subject_id FROM exclusion_criteria)
+AND ROWNUM <= 100;
+```
+
+### 임상시험 용어 및 기준 해설
+
+#### 포함 기준 (Inclusion Criteria)
+- **연령 기준**: 18세 이상 성인, 65세 이하 등
+- **진단 기준**: 특정 질병 진단 확정 환자
+- **중증도 기준**: 특정 점수나 지표 이상의 환자
+- **동의 기준**: 연구 참여 동의 가능한 환자
+
+#### 제외 기준 (Exclusion Criteria)
+- **임신/수유**: 약물 안전성 미확립
+- **간/신 기능 장애**: 약물 대사 및 배설 이상
+- **악성 종양**: 생존 기간 제한 및 치료 간섭
+- **정신질환**: 동의 능력 및 순응도 문제
+- **약물 알레르기**: 시험약물에 대한 기지 과민반응
+
+#### AE/ADR/SUSAR 분류
+
+**AE (Adverse Event) - 이상사례**
+- 임상시험 참여 중 발생한 모든 바람직하지 않은 의학적 사건
+- 시험약물과의 인과관계 무관
+- 모든 증상, 징후, 질병, 검사 이상 포함
+
+**ADR (Adverse Drug Reaction) - 약물이상반응**  
+- 시험약물과 합리적 인과관계가 있는 이상반응
+- 용량과 상관없이 발생
+- 시험약물에 의해 야기된 해로운 반응
+
+**SUSAR (Suspected Unexpected Serious Adverse Reaction)**
+- 의심되는 예상하지 못한 중대한 이상반응
+- 중대하고(Serious) + 예상하지 못하며(Unexpected) + 약물과 관련 의심됨(Suspected)
+- 즉시 규제당국 보고 필요
+
+### 데이터 추출 및 분석 가이드
+
+#### 환자 추적 관찰
+```sql
+-- 환자별 전체 입원 기록 추적
+SELECT 
+    p.subject_id,
+    p.gender,
+    p.anchor_age,
+    a.hadm_id,
+    a.admittime,
+    a.dischtime,
+    a.hospital_expire_flag
+FROM PATIENTS p
+JOIN ADMISSIONS a ON p.subject_id = a.subject_id
+WHERE p.subject_id IN (/* 선별된 환자 목록 */)
+ORDER BY p.subject_id, a.admittime;
+```
+
+#### 약물 투여 이력 추적
+```sql
+-- 시험 대상 환자의 모든 약물 투여 기록
+SELECT 
+    pr.subject_id,
+    pr.drug,
+    pr.starttime,
+    pr.stoptime,
+    pr.route,
+    pr.dose_val_rx,
+    pr.dose_unit_rx
+FROM PRESCRIPTIONS pr
+WHERE pr.subject_id IN (/* 선별된 환자 목록 */)
+  AND pr.starttime >= (/* 시험 시작일 */)
+ORDER BY pr.subject_id, pr.starttime;
+```
+
+#### 검사 결과 모니터링
+```sql
+-- 핵심 안전성 검사 결과 추적
+SELECT 
+    l.subject_id,
+    dl.label,
+    l.charttime,
+    l.valuenum,
+    l.valueuom,
+    l.flag
+FROM LABEVENTS l
+JOIN D_LABITEMS dl ON l.itemid = dl.itemid
+WHERE l.subject_id IN (/* 선별된 환자 목록 */)
+  AND dl.label IN ('Creatinine', 'ALT', 'AST', 'Bilirubin', 'Hemoglobin')
+  AND l.charttime >= (/* 시험 시작일 */)
+ORDER BY l.subject_id, dl.label, l.charttime;
+```
+
+### 활용 팁
+- **조건 과다 시 주의**: 너무 많은 조건으로 환자 수가 급격히 감소할 수 있음
+- **시간 기준 명확화**: 입원 전/후, 시험 시작 전/후 구분 필요  
+- **결측치 처리**: NULL 값에 대한 명시적 처리 필요
+- **중복 제거**: DISTINCT 사용으로 환자 중복 방지
+- **성능 최적화**: 대용량 테이블 조회 시 적절한 인덱스 활용

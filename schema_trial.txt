@@ -1,0 +1,36 @@
+# [임상시험 참고/지침/FAQ]
+
+## 금기 음식
+자몽, 세비야 오렌지, 스타프루트: CYP3A 대사효소 영향, 임상시험 중 섭취 금지
+
+## 금기 약물
+강한/중등도 CYP3A 유도제·억제제, P-gp 억제제, 와파린 등: 병용 금지 또는 감량 필요
+
+## 임상시험 제외 기준 예시
+- "HbA1c 6.5% 초과 환자 제외"
+  → NOT EXISTS (SELECT 1 FROM labevents l JOIN d_labitems d ON l.itemid = d.itemid WHERE l.subject_id = p.subject_id AND LOWER(d.label) LIKE '%hba1c%' AND l.valuenum > 6.5)
+- "3개월 이내 항생제 복용자 제외"
+  → NOT EXISTS (SELECT 1 FROM prescriptions WHERE subject_id = p.subject_id AND drug_type='ANTIBIOTIC' AND starttime >= ADD_MONTHS(SYSDATE,-3))
+- "심부전, 암, 중증간질환 진단자 제외"
+  → NOT EXISTS (SELECT 1 FROM diagnoses_icd d JOIN d_icd_diagnoses dd ON d.icd_code = dd.icd_code AND d.icd_version = dd.icd_version WHERE d.subject_id = p.subject_id AND (LOWER(dd.long_title) LIKE '%heart failure%' OR LOWER(dd.long_title) LIKE '%cancer%' OR LOWER(dd.long_title) LIKE '%severe liver disease%'))
+
+## 임상시험 용어설명
+- AE: 이상반응(약물과 인과관계 불문)
+- ADR: 약물과 인과관계 배제 불가한 이상반응
+- SUSAR: 예상하지 못한 중대한 약물이상반응
+
+## FAQ
+Q: 임상시험 금기 음식이 뭐야?
+A: 자몽, 세비야 오렌지, 스타프루트 등은 임상시험 중 섭취를 금지합니다. (CYP3A 대사에 영향)
+
+Q: 임상시험 제외 기준 예시
+A: 3개월 이내 항생제, HbA1c 6.5% 초과자, 심부전/암 진단자 등
+
+Q: SUSAR란?
+A: 예상하지 못한 중대한 약물이상반응(Suspected Unexpected Serious Adverse Reaction)입니다.
+
+Q: 임상시험 중 탈락 기준?
+A: 동의 철회, 추적 실패, 건강 해침, 중대한 계획서 위반, 약물 이상반응 등
+
+## 기타
+임상시험 중 발생한 AE/ADR/SAE, 투약금기, 대상/제외조건의 SQL 변환 예시 포함

@@ -1,0 +1,865 @@
+MIMIC-IV, a freely accessible electronic health record dataset
+MIMIC-IV 개요 요약
+MIMIC-IV는 2008년부터 2019년까지의 입원환자 정보를 담고 있는 데이터셋입니다. 이 데이터는 Beth Israel Deaconess Medical Center와 MIT가 공동으로 제공하는 것으로, 임상 정보, 검사, 약물, 진단, 의료 기록 텍스트 등을 포함합니다. 비식별화된 공개 의료 데이터이며 연구용 라이센스가 필요합니다. 기존 MIMIC-III 대비 모듈화 구조와 eMAR 등 최신 시스템이 반영되어 있습니다.
+
+주요 모듈 구성 (데이터 구조)
+MIMIC-IV는 3개의 모듈로 구성되어 있습니다:
+1. hosp 모듈: 병원 전반 데이터
+입원기록: patients, admissions, transfers
+진단/처치 코드: diagnoses_icd, procedures_icd, drgcodes
+검사결과: labevents, microbiologyevents
+약물정보: prescriptions, pharmacy, emar, emar_detail
+기타: services, poe, omr
+2. icu 모듈: 중환자실(ICU) 실시간 정보
+환자 상태 측정: chartevents, inputevents, outputevents, procedureevents
+시간 기록: datetimeevents
+Stay 기록: icustays (입퇴실 시간, ICU ID 등 포함)
+3. note 모듈: 임상 자유텍스트
+진료 요약: discharge, discharge_detail
+영상 판독: radiology, radiology_detail
+→ PHI 비식별화 처리(예: 이름 등 제거)
+
+구축 과정
+데이터 구축은 3단계로 진행됩니다. 첫 번째 단계인 Acquisition에서는 BIDMC의 EHR과 MetaVision 시스템에서 MIT 서버로 데이터를 이동합니다. 두 번째 단계인 Transformation에서는 PostgreSQL 기반 스키마 정제 및 정규화를 SQL 스크립트를 사용하여 수행합니다. 세 번째 단계인 Deidentification에서는 HIPAA 기준에 따라 비식별화 작업을 진행하며, 날짜 이동과 이름 제거 등의 과정을 거칩니다.
+
+기술적 특징 및 통계
+MIMIC-IV 데이터셋은 총 180,733명의 환자 정보를 포함하고 있으며, 이 중 50,920명이 ICU 환자입니다. 전체 입원 건수는 431,231건이고, ICU 입원 건수는 73,181건입니다. 사망률을 살펴보면 ICU 내 입원 사망률은 약 11.6%이며, 1년 내 사망률은 약 38.6%입니다.
+
+활용 및 접근
+MIMIC-IV 데이터셋은 PhysioNet 웹사이트를 통해 연구용 라이선스를 신청한 후 다운로드할 수 있습니다. 주요 활용 분야로는 환자 생존 예측, 의료 이상 탐지, LLM 기반 자연어에서 SQL 쿼리 자동 생성, 임상 노트 분석을 통한 텍스트 마이닝 등이 있습니다.
+
+MIMIC-III와의 주요 차이점
+MIMIC-III와 MIMIC-IV의 주요 차이점은 다음과 같습니다. 구조 면에서 MIMIC-III는 단일 스키마였으나 MIMIC-IV는 hosp, icu, note 모듈로 모듈화되었습니다. eMAR 기록의 경우 MIMIC-III에는 없었지만 MIMIC-IV에는 약물 투약 시점 기록이 포함되어 있습니다. 환자 ID는 MIMIC-III에서는 subject_id 재사용이 가능했지만, MIMIC-IV에서는 새로운 subject_id를 사용하여 이전 버전과 링크할 수 없습니다. ICU stay 식별자도 MIMIC-III의 icustay_id에서 MIMIC-IV의 stay_id로 변경되었습니다.
+
+기술 검증
+MIMIC-IV 데이터셋의 품질 보증을 위해 여러 검증 과정을 거칩니다. 무결성 체크에서는 ID 매핑 정확성과 외래키 관계를 검증합니다. 일관성 체크에서는 동일 환자 기록의 정합성을 확인합니다. 비식별화 검증에서는 날짜, 이름, 주소 등의 제거 상태를 확인하여 개인정보 보호를 보장합니다.
+
+
+
+
+2.1 d_labitems (실험실 검사 항목 정의)
+테이블 개요
+병원에서 수행된 실험실 검사 항목에 대한 정의를 담고 있는 테이블로, 병원 실험실에서 수행된 검사 뿐 아니라 외래 클리닉 등 외부에서 시행된 검사도 포함됨
+테이블 연결 정보
+연결 테이블: labevents
+연결 기준: itemid
+labevents.itemid는 이 테이블의 itemid를 참조하여 검사 항목명, 체액 종류, 검사 분류 등을 확인함
+컬럼 정보
+itemid: 검사 항목 고유 식별자 (INTEGER, 50801~53152, ID는 연속되지 않으며 일부 누락된 번호 존재함)
+label: 검사 항목 이름 (VARCHAR(50), NaN 네 명 있음)
+fluid: 검사 채취 체액 종류 (VARCHAR(50), Ascites, Blood, Bone Marrow, Cerebrospinal Fluid, Fluid, I, Joint Fluid, Other Body Fluid, Pleural, Q, Stool, Urine)
+category: 검사 유형의 상위 분류 (VARCHAR(50), Blood Gas, Chemistry, Hematology)
+활용 팁
+itemid를 기준으로 labevents와 JOIN하면 실제 검사 결과(valuenum, value)와 연결 가능함
+fluid를 활용해 채취 부위별 검사 구분 가능
+label 또는 category 기반으로 검사군 정의 후 요약 분석에 활용 가능
+loinc_code는 외부 EMR 시스템이나 표준 용어 맵핑 시 필수
+비표준 fluid 값은 분석 전 표준화 전처리 필요
+2.2 OMR (Online Medical Record)
+테이블 개요
+전자의무기록(EHR)에 기록된 다양한 관찰 정보를 저장하는 테이블로, 특히 외래 환자의 혈압, 체중, 키, BMI 등 신체 계측 정보가 주요하게 포함되며, 기타 다양한 건강 관련 관찰 항목도 함께 기록됨
+테이블 연결 정보
+연결 테이블: 없음 (다른 테이블과 직접적인 외래키 관계는 없음)
+간접 연결: subject_id를 기준으로 patients, admissions, chartevents 등의 환자 관련 테이블과 조인 가능
+주요 컬럼 정보
+subject_id: 환자 식별자 (INTEGER, 고유한 환자 ID)
+chartdate: 관찰 기록 날짜 (DATE, YYYY-MM-DD 형식)
+seq_num: 동일 날짜의 관찰 순서 (INTEGER)
+result_name: 관찰 항목명 (VARCHAR(100))
+result_value: 관찰 결과 값 (TEXT)
+Result_name 예시 및 빈도
+Blood Pressure: 2,169,549건
+Weight (Lbs): 1,889,542건
+Height (Inches): 706,906건
+BMI (kg/m2): 1,662,112건
+Blood Pressure Sitting: 3,400건
+Blood Pressure Standing (1 min): 2,560건
+eGFR: 240건
+
+주요 측정 항목 분석
+Blood Pressure가 전체의 33.70%로 가장 많고, Weight (Lbs)가 29.34%, BMI (kg/m2)가 25.81%를 차지합니다. 특별한 혈압 측정으로는 Blood Pressure Sitting, Blood Pressure Lying, Blood Pressure Standing (1분, 3분) 등이 있어 기립성 저혈압 검사에 활용됩니다.
+혈압 측정 자세별 의미
+Blood Pressure: 일반적인 혈압 측정 (보통 앉은 상태)
+Blood Pressure Lying: 누운 상태에서의 혈압 (기준선 역할)
+Blood Pressure Sitting: 앉은 자세에서의 혈압 (외래 진료의 일반적 측정)
+Blood Pressure Standing: 일어난 직후 측정 (기립성 저혈압 초기 탐지)
+Blood Pressure Standing (1분/3분): 기립 후 일정 시간 경과 측정 (지연성 기립성 저혈압 진단)
+
+
+
+2.3 admissions
+테이블 개요
+환자의 병원 입원 정보를 담고 있는 핵심 테이블로, 입원/퇴원 시각, 사망 시각, 입원 경로, 퇴원 경로, 보험 정보, 인종, 결혼 여부, 사망 여부 등 다양한 정보 포함
+테이블 연결 정보
+연결 테이블: patients, icustays, diagnoses_icd, poe, microbiologyevents 등
+연결 기준: subject_id → patients.subject_id (환자 정보 연결), hadm_id → 입원 단위 기준으로 ICU stay, 진단, 처방, 검사 등과 연결
+컬럼 정보
+subject_id: 환자 ID (INTEGER)
+hadm_id: 입원 ID (INTEGER, 2000000~2999999)
+admittime: 입원 시각 (TIMESTAMP)
+dischtime: 퇴원 시각 (TIMESTAMP)
+deathtime: 병원 내 사망 시각 (TIMESTAMP)
+admission_type: 입원 유형 (VARCHAR(40), ELECTIVE, URGENT, EMER. 등 총 9개)
+admit_provider_id: 입원 담당 의료진 ID (VARCHAR(10))
+admission_location: 입원 경로 (VARCHAR(60))
+discharge_location: 퇴원 후 이동지 (VARCHAR(60))
+insurance: 보험 유형 (VARCHAR(255))
+language: 언어 (VARCHAR(10))
+marital_status: 혼인 여부 (VARCHAR(30))
+race : 인종 (VARCHAR(80))
+edregtime: 응급실 등록 시각 (TIMESTAMP)
+edouttime: 응급실 퇴실 시각 (TIMESTAMP)
+hospital_expire_flag: 병원 내 사망 여부 (SMALLINT, 1=사망, 0=생존)
+입원 유형 (admission_type) 분류
+응급 그룹
+DIRECT EMER.: 외부에서 바로 응급실로 이송되어 입원
+EW EMER.: 응급 병동에서 입원 결정
+관찰 그룹
+DIRECT OBSERVATION: 외래·병동 경유 없이 직접 관찰 병동으로 입원
+OBSERVATION ADMIT: 모니터링 목적의 입원
+EU OBSERVATION: 응급실에서 관 찰 병동으로 전환
+기타
+ELECTIVE: 사전 계획/예약된 입원
+URGENT: 당장 응급은 아니지만 지연 시 위험
+SURGICAL SAME DAY ADMISSION: 입원과 수술이 같은 날 진행
+AMBULATORY OBSERVATION: 입원하지 않고 외래로 와서 일정 시간 모니터링
+입원 경로 (admission_location) 주요 유형
+EMERGENCY ROOM: 응급실을 통해 입원
+CLINIC REFERRAL: 외래 진료소에서 입원 권고 후 전원
+PHYSICIAN REFERRAL: 외부 의사 진료 후 병원 입원 추천
+TRANSFER FROM HOSPITAL: 다른 병원에서 전원되어 입원
+WALK-IN/SELF REFERRAL: 본인 스스로 병원 내원 후 입원
+퇴원 위치 (discharge_location) 주요 유형
+HOME: 집으로 퇴원
+HOME HEALTH CARE: 집에서 간호사나 물리치료사 방문
+SKILLED NURSING FACILITY: 전문 간호 요양시설
+REHAB: 재활 치료기관으로 전원
+DIED: 병원 내 사망 처리
+HOSPICE: 임종 돌봄 기관으로 전원
+보험 유형 (insurance)
+Medicare: 65세 이상 고령자 및 일부 장애인을 위한 연방 의료보험
+Medicaid: 저소득층 및 특정 장애인을 위한 공공 의료보험 프로그램
+Other: 기타 민간보험, 자비 부담, 군 보험 등
+
+
+2.4 d_hcpcs
+테이블 개요
+hcpcsevents 테이블에서 사용되는 CPT/HCPCS 코드의 정의 정보를 담고 있는 차원 테이블로, 대부분은 병원 청구(billing) 목적으로 사용되는 CPT 코드이며, 코드에 대한 의미 설명을 제공
+HCPCS 구성
+Level I: CPT (Current Procedural Terminology) - 미국 의사협회에서 개발, 의료 시술, 처치, 수술, 상담 등에 사용됨
+Level II: HCPCS 자체 코드 - CPT 코드로 커버되지 않는 비의료행위적 서비스/물품을 표현
+테이블 연결 정보
+연결 테이블: hcpcsevents
+연결 기준: code
+컬럼 정보
+code: CPT/HCPCS 코드 (CHAR(5))
+category: 코드 분류 번호 (SMALLINT)
+long_description: 코드 상세 설명 (TEXT)
+short_description: 코드 요약 설명 (VARCHAR(180))
+
+2.5 d_icd_diagnoses
+테이블 개요
+입원 기간이 끝난 후 환자에게 할당된 ICD-9 또는 ICD-10 진단 코드에 대한 정의를 담고 있는 차원 테이블로, 병원에서 진료 후 보험 청구 및 임상 분류 목적으로 사용됨
+테이블 연결 정보
+연결 테이블: diagnoses_icd
+연결 기준: icd_code, icd_version
+컬럼 정보
+icd_code: ICD 진단 코드 (CHAR(7))
+icd_version: ICD 코드 버전 (INTEGER, 9: ICD-9-CM, 10: ICD-10-CM)
+long_title: ICD 코드의 상세 질병 설명 (VARCHAR(255))
+ICD-9 코드 범위별 분류
+001–139: 감염성 및 기생충성 질환
+140–239: 신생물 (암 포함)
+240–279: 내분비, 영양 및 대사 질환 및 면역 질환
+280–289: 혈액 및 조혈기관 질환
+290–319: 정신질환
+320–389: 신경계 및 감각기관 질환
+390–459: 순환기계 질환
+460–519: 호흡기계 질환
+520–579: 소화기계 질환
+580–629: 비뇨기계 및 생식기계 질환
+630–679: 임신, 출산 및 산욕기 상태
+680–709: 피부 및 피하조직 질환
+710–739: 근골격계 및 결합조직 질환
+740–759: 선천성 이상
+760–779: 주산기 상태
+780–799: 일반적 증상, 이상소견
+800–999: 손상 및 중독 등 외인성 원인
+V01–V91: 질병은 아니지만 특수한 건강 상태나 접종, 이력, 가족력 등
+E000–E999: 손상, 중독, 사고의 원인을 설명하는 보조 코드
+2.6 d_icd_procedures
+테이블 개요
+입원 종료 시 병원이 기록한 시술/처치 절차에 대해 ICD-9-PCS 또는 ICD-10-PCS 코드 기반 정의를 제공하는 차원 테이블로, 주로 수술 및 중재적 처치 절차를 확인하거나 보험 청구 및 의료 자원 분석에 사용됨
+테이블 연결 정보
+연결 테이블: procedures_icd
+연결 기준: icd_code, icd_version
+컬럼 정보
+icd_code: ICD 시술 코드 (CHAR(7))
+icd_version: ICD 코드 버전 (INTEGER, 9: ICD-9-PCS, 10: ICD-10-PCS)
+long_title: 시술/처치의 상세 설명 (VARCHAR(255))
+2.7 diagnoses_icd
+테이블 개요
+입원 중 발생한 진단 정보(질병 코드)를 기록한 테이블로, 병원이 환자에게 청구한 진단명들을 ICD-9 또는 ICD-10 코드 체계로 저장함
+테이블 연결 정보
+연결 테이블: d_icd_diagnoses
+연결 기준: icd_code, icd_version
+컬럼 정보
+subject_id: 환자 고유 식별자 (INTEGER)
+hadm_id: 입원 건 단위 식별자 (INTEGER)
+seq_num: 진단의 순위 또는 우선순위 (INTEGER, 1~39)
+icd_code: 질병을 나타내는 ICD 코드 (VARCHAR(7))
+icd_version: 사용된 코드 체계 버전 (INTEGER, 9: ICD-9, 10: ICD-10)
+2.8 drgcodes
+테이블 개요
+환자의 입원에 대해 병원이 보험사 또는 정부로부터 입원비용을 청구하기 위해 사용하는 DRG 코드를 기록한 테이블
+테이블 연결 정보
+subject_id: 환자 고유 식별자 (patients 테이블과 연결됨)
+hadm_id: 입원 기록 식별자 (admissions 테이블과 연결됨)
+컬럼 정보
+subject_id: 환자 식별자 (INTEGER)
+hadm_id: 입원 단위 식별자 (INTEGER)
+drg_type: 사용된 DRG 체계의 종류 (VARCHAR(4), APR, HCFA)
+drg_code: DRG 코드 자체 (VARCHAR(10), 1~998)
+description: 해당 DRG 코드의 설명 텍스트 (VARCHAR(195))
+drg_severity: 환자의 질병 중증도 (SMALLINT, NaN(HCFA) / 1~4(APR))
+drg_mortality: 환자의 예상 사망 위험도 (SMALLINT, NaN(HCFA) / 1~4(APR))
+DRG 코드 범위별 의미
+001–039: 신경계 질환
+040–061: 눈 질환
+062–075: 귀/코/목 질환
+076–106: 호흡기계 질환
+107–130: 순환기계 질환
+131–139: 혈액 질환
+140–159: 소화기계 질환
+160–164: 간 및 담낭 질환
+165–208: 근골격계 질환
+209–238: 피부/피하 조직 질환
+239–256: 유방 및 내분비 질환
+257–278: 신장 및 비뇨기계 질환
+280–295: 여성 생식기 질환
+296–316: 분만 및 관련 질환
+317–335: 신생아 질환
+336–358: 기타 질환
+400–453: 정신 및 행동 장애
+454–479: 중독 및 재활
+480–500: HIV 관련 및 다계통 질환
+501–999: 시술 중심 DRG
+2.9 emar
+테이블 개요
+전자 투약 기록(eMAR, Electronic Medication Administration Record)을 담은 테이블로, 병상 간호사가 환자 및 약물의 바코드를 스캔함으로써 투약 사실을 자동으로 기록함
+테이블 연결 정보
+subject_id: 환자 고유 식별자 (patients 테이블과 연결됨)
+hadm_id: 입원 기록 식별자 (admissions 테이블과 연결됨)
+emar_id: 전자 투약 기록 ID (emar_detail 테이블과 연결됨)
+pharmacy_id: 약물 처방 정보 ID (pharmacy, prescriptions 테이블과 연결됨)
+poe_id: 의사 주문(POE) 시스템 ID (poe, prescriptions 테이블과 연결됨)
+컬럼 정보
+subject_id: 환자 고유 ID (INTEGER)
+hadm_id: 입원 기록 고유 ID (INTEGER)
+emar_id: 전자 투약 기록 고유 ID (VARCHAR(25))
+emar_seq: 동일 환자 내 투약 기록 순서 (INTEGER)
+poe_id: 주문(POE) 시스템 ID (VARCHAR(25))
+pharmacy_id: 약물 처방 정보 ID (INTEGER)
+charttime: 약물이 실제로 투약된 시각 (TIMESTAMP)
+medication: 투약된 약물 이름 (TEXT)
+event_txt: 투약 이벤트 설명 (VARCHAR(100))
+scheduletime: 예정된 투약 시각 (TIMESTAMP)
+storetime: 시스템에 투약이 기록된 시각 (TIMESTAMP)
+event_txt 분류
+정상 수행(완료됨): Administered, Applied, Assessed, Confirmed, Flushed, Read, Removed, Restarted, Started, Stopped, Rate Change 정상 수행(다른 장소에서): in Other Location으로 시작하는 이벤트들 지연 수행: Delayed로 시작하는 이벤트들 미시행/중단/예외 상황: Not Given, Not Applied, Not Assessed, Hold Dose, Partial Infusion 관련 상태: Infusion Reconciliation, TPN Rate Not Changed
+2.10 emar_detail
+테이블 개요
+emar 테이블의 투약 기록에 대한 세부 정보를 보완하는 테이블로, 계층적 구조를 가진 테이블로 각 약물 투여 건에 대해 실제 투약된 제제의 수량, 단위, 주입 속도, 투약 경로 등 상세 투약 행위를 기록함
+테이블 연결 정보
+subject_id: 환자 고유 식별자 (patients 테이블과 연결됨)
+emar_id: 전자 투약 기록 고유 ID (emar 테이블과 연결됨)
+pharmacy_id: 약물 처방 정보 ID (pharmacy 테이블과 연결됨)
+주요 컬럼 정보
+subject_id: 환자 고유 ID (INTEGER)
+emar_id: 전자 투약 기록 고유 ID (VARCHAR(25))
+emar_seq: 동일 환자 내 투약 순서 (INTEGER)
+parent_field_ordinal: 하위 제제 구분자 (VARCHAR(10))
+administration_type: 투약 유형 (VARCHAR(50))
+pharmacy_id: 약물 처방 ID (INTEGER)
+barcode_type: 바코드 유형 (VARCHAR(4))
+reason_for_no_barcode: 바코드 미사용 사유 (TEXT)
+complete_dose_not_given: 전체 용량 미투약 여부 (VARCHAR(5))
+dose_due: 예정된 용량 (VARCHAR(100))
+dose_due_unit: 예정된 용량 단위 (VARCHAR(50))
+dose_given: 실제 투약된 용량 (VARCHAR(255))
+dose_given_unit: 실제 투약된 용량 단위 (VARCHAR(50))
+product_amount_given: 제제 투여량 (VARCHAR(30))
+product_unit: 제제 단위 (VARCHAR(30))
+route: 투약 경로 (VARCHAR(10))
+site: 투약 부위 상세 위치 (VARCHAR(255))
+barcode_type 분류
+bc: 경구약, 일반주사 등
+if: 수액, 영양제, 약물의 연속적 정맥 주입
+iv: 정맥 주사(IV), 보통은 일시적 정맥 주사
+pmto: 병원 외부에서 환자가 가지고 온 약을 병원에서 복용
+ppn: 말초 정맥을 통한 비경구 영양 공급
+tpn: 중심 정맥을 통한 완전 비경구 영양요법
+2.11 hcpcsevents
+테이블 개요
+환자의 입원 중 발생한 청구 이벤트를 기록한 테이블로, HCPCS(Healthcare Common Procedure Coding System) 코드 기반의 의료 행위를 담고 있으며, 주로 청구용 시술 코드(CPT 포함)가 저장됨
+테이블 연결 정보
+subject_id: 환자 고유 식별자 (patients 테이블과 연결됨)
+hadm_id: 입원 기록 식별자 (admissions 테이블과 연결됨)
+hcpcs_cd: 의료행위 코드 (d_hcpcs 테이블과 연결됨)
+컬럼 정보
+subject_id: 환자 고유 ID (INTEGER)
+hadm_id: 입원 기록 ID (INTEGER)
+chartdate: 해당 청구 코드가 기록된 날짜 (DATE)
+hcpcs_cd: HCPCS 의료 행위 코드 (CHAR(5))
+seq_num: 진단의 순위 또는 우선순위 (INTEGER, 1~15)
+short_description: 해당 HCPCS 코드의 간략 설명 (VARCHAR(180))
+HCPCS 코드 분류
+5자리 숫자 코드: 주로 의사가 수행한 진료, 시술 코드 1자리 알파벳 + 4자리 숫자 코드: 의료 보조기기, 약물, 교통수단 등 보험 청구용
+A: 구급차, 병원 이송 서비스
+B: 영양보충제, 주입기기
+E: 내구성 의료기기(휠체어 등)
+J: 주사제 및 약물
+L: 보조기기/보철물
+P: 병리검사/검사실 서비스
+Q/R/S: 임시코드(보험사 시범서비스 등)
+T: 주정부 Medicaid 관련 코드
+V: 시각, 청각 관련 서비스
+2.12 labevents
+테이블 개요
+환자의 실험실 검사 결과를 시간 순서로 저장한 테이블로, 임상 연구를 위해 수집된 실험실 검사 결과를 포함
+테이블 관계
+subject_id → patients: 환자 고유 식별자, 환자 성별, 나이, 사망 여부 등 메타 정보 연결
+hadm_id → admissions: 입원 고유 식별자, 입원/퇴원일, 병실, 진단 코드 등과 조인
+itemid → d_labitems: 검사 항목 id, 검사 항목 상세 정보
+컬럼 정보
+LABEVENT_ID: 각 검사 결과의 고유 ID (NUMBER, PK)
+SUBJECT_ID: 환자 ID (NUMBER, FK)
+HADM_ID: 입원 ID (NUMBER, nullable)
+SPECIMEN_ID: 동일 검체 식별자 (NUMBER)
+ITEMID: 검사 항목 ID (NUMBER, FK)
+CHARTTIME: 검사 시행 시점 (TIMESTAMP)
+STORETIME: 데이터 저장 시점 (TIMESTAMP)
+VALUE: 결과 텍스트 값 (VARCHAR2(200))
+VALUENUM: 수치형 결과 (FLOAT)
+VALUEUOM: 단위 (VARCHAR2(20))
+REF_RANGE_LOWER: 정상 하한치 (FLOAT)
+REF_RANGE_UPPER: 정상 상한치 (FLOAT)
+FLAG: 비정상 여부 (VARCHAR2(10))
+PRIORITY: 검사 우선도 (VARCHAR2(7))
+COMMENTS: 추가 설명 및 해설 (CLOB)
+2.13 microbiologyevents
+테이블 개요
+병원 내에서 실시된 미생물 검사(Microbiology test) 결과를 저장하는 테이블로, 혈액, 소변, 분변 등의 배양 분석을 통해 나온 미생물 동정, 약제 내성, 배양 결과 등을 기록
+테이블 관계
+subject_id → patients: 환자 정보 (성별, 나이 등)와 연결
+hadm_id → admissions: 입원 단위 연결 (입퇴원 시간 등)
+컬럼 정보
+subject_id: 환자 식별자 (NUMBER)
+hadm_id: 입원 식별자 (NUMBER)
+chartdate: 검사 요청 날짜 (TIMESTAMP)
+charttime: 검사 실행 시간 (TIMESTAMP)
+spec_itemid: 검체 종류 (NUMBER)
+spec_type_desc: 검체 설명 (VARCHAR2(100))
+test_seq: 테스트 순서 (NUMBER)
+storedate: 결과 저장 일자 (TIMESTAMP)
+storetime: 결과 저장 시각 (TIMESTAMP)
+test_itemid: 검사 항목 ID (NUMBER)
+test_name: 검사명 (VARCHAR2(100))
+org_itemid: 검출된 미생물 ID (NUMBER)
+org_name: 미생물 이름 (VARCHAR2(100))
+isolate_num: 균 분리 번호 (NUMBER(4))
+quantity: 균 검출 수량 (VARCHAR2(50))
+ab_itemid: 항생제 항목 ID (NUMBER)
+ab_name: 항생제 이름 (VARCHAR2(30))
+dilution_text: 희석법 텍스트 (VARCHAR2(10))
+dilution_comparison: 비교 연산자 (VARCHAR2(20))
+dilution_value: 희석 값 (FLOAT)
+interpretation: 내성 여부 (VARCHAR2(5))
+comments: 검사 주석 또는 추가 설명 (CLOB)
+2.14 patients
+테이블 개요
+환자 인구통계 정보 및 사망 정보를 담고 있으며, MIMIC-IV 데이터 전체에서 주요 연결 노드 역할하는 테이블
+컬럼 정보
+subject_id: 환자 고유 식별자 (NUMBER, PK)
+gender: 환자 성별 (VARCHAR2(1), M, F 등)
+anchor_age: 비식별화 기준 시점 나이 (NUMBER, 90세 이상은 91로 통합)
+anchor_year: 비식별화 기준 연도 (NUMBER, 2100–2200 범위)
+anchor_year_group: 연도 범위 그룹 (VARCHAR2(255), 예: 2011–2013)
+dod: 사망 일자 (VARCHAR2(20), de-identified, 1년 이내)
+pharmacy 테이블
+테이블 개요
+약국에서 처리된 조제 및 투약 공급 정보를 기록한 테이블이다. 전자의무기록(eMAR, prescriptions) 기반이 아닌, 약국 실제 조제 내용을 포함
+테이블 관계
+subject_id: patients.subject_id와 연결 (환자 인구학 정보)
+hadm_id: admissions.hadm_id와 연결 (입원 단위 정보)
+poe_id: poe.poe_id와 연결 (의사 주문)
+poe_seq: poe.poe_seq와 연결 (주문 순번)
+prescription_id: prescriptions.pharmacy_id와 연결 (조제된 약물과 상응하는 처방)
+컬럼 정보
+pharmacy_id: 조제 이력 고유 식별자 (기본키)
+subject_id: 환자 식별자
+hadm_id: 입원 식별자
+poe_id: 의사 주문 ID
+poe_seq: 주문 순번
+starttime: 약물 조제 시작 시간 또는 계획된 시작 시간
+stoptime: 약물 조제 종료 또는 투약 종료 예정 시간
+medication: 조제된 약물 이름 (예: "Acetaminophen 500 MG Tablet")
+proc_type: 조제 유형 (예: IV, PO, PRN 등)
+status: 조제 상태 (예: Verified, Discontinued 등)
+entertime: 약물 입력 시간 (EMR 시스템에 입력된 시간)
+verifiedtime: 약물이 약사에 의해 검증된 시간
+route: 투여 경로 (예: IV, PO 등)
+frequency: 투약 빈도 (예: BID, TID, Q4H 등)
+disp_sched: 배포 스케줄 (투약 간격에 대한 서술형 설명)
+infusion_type: 정맥 주입형 약물인 경우의 타입 (예: continuous)
+sliding_scale: sliding scale 적용 여부 (혈당약 등)
+lockout_interval: 자가 조절 진통제(PCA)의 재투여 제한 시간
+basal_rate: 기본 주입 속도 (mL/hr 등)
+one_hr_max: 1시간 최대 투약량 제한
+doses_per_24_hrs: 24시간 내 최대 용량 횟수
+duration: 투약 총 지속 시간
+duration_interval: duration의 단위 (예: hours, days 등)
+expiration_value: 유효기간 수치
+expiration_unit: 유효기간 단위 (예: days)
+expirationdate: 약물 만료일
+dispensation: 실제 배포 상태 또는 장소 정보
+fill_quantity: 조제된 약의 총 수량
+poe 테이블
+테이블 개요
+병원 내에서 의료진이 전자의무기록(EHR) 시스템을 통해 처방/주문(Order)을 입력한 내역을 저장 검사, 진단, 영상, 처방 등의 오더 기록 (실제 시행 여부가 아닌 '입력된 오더' 중심)
+테이블 관계
+subject_id: patients.subject_id와 연결 (환자 정보)
+hadm_id: admissions.hadm_id와 연결 (입원 단위 정보)
+prescription_id: prescriptions.prescription_id와 연결 (조제 단계에서 투약 세부 처방)
+컬럼 정보
+poe_id: 주문 그룹 식별자 (기본키)
+poe_seq: 동일 주문 그룹 내 순번 컬럼
+subject_id: 환자 식별자
+hadm_id: 입원 식별자
+ordertime: 주문이 입력된 시점
+order_type: 주문 분류 (medication, lab 등)
+concept_type: 주문 대상 유형
+discontinue_of_poe_id: 특정 주문을 중단 취소한 경우 관련 주문 ID
+discontinued_by_poe_id: 수정 취소 동작을 수행한 주문 ID
+poe_detail 테이블
+테이블 개요
+poe 테이블의 상세 오더 항목을 저장하는 하위 테이블
+테이블 관계
+poe_id: poe.poe_id와 연결 (상위 주문 그룹)
+poe_seq: poe.poe_seq와 연결 (주문 그룹 내 항목 순번)
+컬럼 정보
+poe_id: 상위 주문 그룹 ID
+poe_seq: 동일 오더 그룹 내 항목 순번
+subject_id: 환자 고유 ID
+field_name: 주문의 속성명 (예: DRUG_NAME, FREQUENCY)
+field_value: 해당 속성의 값 (예: "Vancomycin", "BID")
+prescriptions 테이블
+테이블 개요
+MIMIC 데이터베이스에서 환자에게 처방된 약물 정보가 저장된 테이블 pharmacy, admissions, patients 테이블과 외래키로 연결 실제로 투약된 약물의 종류, 용량, 경로, 기간 등을 기록 drug, dose_val_rx, route, starttime 등은 임상 데이터 분석에 핵심 컬럼
+컬럼 정보
+subject_id: 환자 고유 ID (patients 테이블과 연결)
+hadm_id: 입원 단위 ID (admissions 테이블과 연결)
+pharmacy_id: 약물 처리 단위 식별자 (pharmacy 테이블의 키)
+poe_id: 주문(Order) 정보 연결
+poe_seq: 주문 순번
+order_provider_id: 처방한 의사 ID
+starttime: 약물 처방 시작 시간 (실제 투약 시작 시점)
+stoptime: 약물 처방 종료 시간 (투약 종료 시점, null일 수 있음)
+drug_type: 약물 분류 (GENERIC, BRAND 등)
+drug: 약물 이름 (상품명 또는 일반명)
+formulary_drug_cd: 병원 내 처방코드
+gsn: General Sequence Number (일반적 식별자)
+ndc: National Drug Code (미국 FDA 등록 코드)
+prod_strength: 제형 강도 (예: "500 MG")
+form_rx: 처방 형태 (예: tablet, solution 등)
+dose_val_rx: 처방 용량 값 (숫자 또는 문자열 혼합 가능)
+dose_unit_rx: 처방 용량 단위 (mg, ml 등)
+form_val_disp: 조제시 용량 값 (실제로 준비된 양)
+form_unit_disp: 조제시 단위 (mg, ml 등)
+doses_per_24_hrs: 1일 복용 횟수
+route: 투약 경로 (PO(경구), IV(정맥주사), IM 등)
+procedures_icd 테이블
+테이블 개요
+MIMIC-IV에서 환자가 입원 중 받은 시술, 수술 등의 의료행위 정보를 담은 테이블 ICD 코드 체계(국제질병분류)를 사용해 각 시술/수술을 코드로 표현 admissions 테이블과 외래키로 연결되어 있으며, 한 입원에 여러 시술이 존재할 수 있음 시술 일자를 포함하므로 시간 기반 분석 가능 (chartdate) 시술명은 직접 저장되지 않고, d_icd_procedures 테이블과 조인하여 long_title을 얻어야 함
+컬럼 정보
+subject_id: 환자 고유 ID (patients 테이블과 연결)
+hadm_id: 입원 단위 ID (admissions 테이블과 외래키 연결)
+seq_num: 시술 순서 (같은 입원 내 여러 시술이 있을 경우 순서 부여)
+chartdate: 시술 기록 날짜 (시술이 시행된 날짜 또는 기록된 날짜)
+icd_code: 시술/수술에 해당하는 ICD 코드 (d_icd_procedures에서 해석)
+icd_version: ICD 코드 버전 (9: ICD-9-CM, 10: ICD-10-PCS)
+활용 팁
+icd_code는 코드만 존재하므로 실제 시술명은 d_icd_procedures 테이블에서 조인 필요
+chartdate를 통해 시술 시점을 기준으로 진료 흐름 분석 가능
+한 명의 환자에게 한 번의 입원(hadm_id) 동안 여러 시술이 존재할 수 있음
+services 테이블
+테이블 개요
+MIMIC-IV에서 환자가 입원 중 받은 진료과(service)의 변동 기록을 담은 테이블 병원 내에서 환자가 어떤 진료과(예: 내과, 외과)를 거쳤는지 시간 순서대로 확인 가능 주로 admissions와 연결되며, subject_id, hadm_id, transfertime 조합으로 고유 식별됨 실제 병동 전출입이 아닌, 진료과 코드 상 이동 기록
+컬럼 정보
+subject_id: 환자 고유 ID (patients 테이블과 연결)
+hadm_id: 입원 단위 ID (admissions 테이블과 외래키 연결)
+transfertime: 진료과 변경 시간 (시간 기준 순서로 정렬 가능)
+prev_service: 이전 진료과 (이동 전, 예: EM, MED, SUR 등)
+curr_service: 현재 진료과 (이동 후, 진료과 코드 약어)
+진료과 코드 예시
+EM: 응급의학과 (Emergency Medicine)
+MED: 내과 (Medicine)
+SUR: 외과 (Surgery)
+NMED: 신경과 (Neurology - Medicine)
+ORTHO: 정형외과 (Orthopedic Surgery)
+활용 팁
+진료 흐름 파악: 응급실(EM) → 내과(MED) → 외과(SUR) 등 흐름 시퀀스 분석 가능
+transfertime을 기준으로 입원 시점부터 퇴원까지의 과별 경과 분석에 활용
+진료과 이름은 약어로 저장되어 있어, 자연어 질의 응답(NLQ) 시스템에서는 label mapping 필요
+transfers 테이블
+테이블 개요
+MIMIC-IV 데이터에서 환자가 병원 내에서 어떤 병동/ICU로 이동했는지를 시간 순으로 기록한 테이블 일반병동 ↔ 중환자실(ICU) ↔ 회복병동 등의 내부 이동 흐름 파악 가능 intime과 outtime을 통해 입실 시간과 퇴실 시간 간의 체류 시간 계산 가능 eventtype은 이동의 성격(입실, 퇴실 등)을 설명함 careunit은 병동 또는 중환자실의 명칭을 의미
+컬럼 정보
+subject_id: 환자 고유 ID (patients와 연결)
+hadm_id: 입원 단위 ID (admissions와 연결)
+transfer_id: 병동 이동 기록의 고유 ID (기본키)
+eventtype: 이동의 종류 (admit, transfer, discharge 등)
+careunit: 병동 또는 중환자실 이름 (예: MICU, SICU, Med-Surg, Stepdown 등)
+intime: 병동 입실 시간
+outtime: 병동 퇴실 시간
+careunit 예시
+MICU: Medical ICU (내과계 중환자실)
+SICU: Surgical ICU (외과계 중환자실)
+CCU: Coronary Care Unit
+TSICU: Trauma-Surgical ICU
+Med-Surg: 일반 내외과 병동
+Stepdown: 회복 병동 또는 관찰 병동
+활용 팁
+시간 흐름 분석에 최적화된 테이블로 intime과 outtime을 사용해 각 병동의 체류 시간 계산 가능
+eventtype이 admit, transfer, discharge로 병동 이동의 시작/종료 여부 파악 가능
+병동 흐름 분석: 응급실 → 일반병동 → ICU → 퇴원 등 시퀀스 트래킹 가능
+icustays와 병행하여 ICU 체류 파악 시 사용
+d_items 테이블
+테이블 개요
+MIMIC-IV에서 itemid에 해당하는 항목 코드의 메타 정보를 담고 있는 사전 테이블 chartevents, datetimeevents, procedureevents, inputevents, outputevents 등 다양한 테이블에서 사용됨 각 항목(itemid)에 대해 라벨, 단위, 측정 유형, 연결 테이블 등을 설명 GPT 기반 자연어 질의(SQL 생성) 시, 사람이 이해할 수 있는 레이블(label)로 매핑하는 데 매우 중요
+컬럼 정보
+itemid: 항목 고유 코드 (chartevents 등에서 사용되는 측정 항목 식별자)
+label: 항목 이름 (사람이 읽을 수 있는 라벨, 예: "Heart Rate", "Glucose", "Urine Output" 등)
+abbreviation: 약어 (간략 표기, 일부 항목에만 존재)
+linksto: 연결되는 테이블 이름 (chartevents, outputevents 등)
+category: 항목 카테고리 (예: "Vital Signs", "Labs", "Input", "Output" 등)
+unitname: 측정 단위 (bpm, mmHg, °C, ml 등)
+param_type: 값의 유형 (numeric, text, date, boolean 등)
+lownormalvalue: 정상 하한값 (예: 체온 36.5)
+highnormalvalue: 정상 상한값 (예: 체온 37.5)
+예시 항목
+itemid 211: Heart Rate, chartevents, bpm, numeric
+itemid 220045: Mean BP, chartevents, mmHg, numeric
+itemid 220277: Temperature Celsius, chartevents, °C, numeric
+itemid 225664: Glucose, labevents, mg/dL, numeric
+itemid 225828: Urine Output, outputevents, mL, numeric
+활용 팁
+itemid는 실제 측정값 테이블(chartevents 등)의 키 값
+GPT나 자연어 기반 SQL 변환 시 "심박수" → itemid = 211로 매핑 정보 제공
+linksto를 통해 어떤 테이블에서 사용되는지 구분할 수 있음
+param_type이 numeric일 경우 valuenum 사용, text일 경우 value 컬럼 사용
+chartevents 테이블
+테이블 개요
+환자의 생체 신호(Vital Signs), 관찰 기록(Observation), 간호사 수기 입력 등이 시간 순으로 저장된 테이블 ICU 및 병동에서 매우 높은 빈도로 기록되며, 수억 건에 달하는 데이터 존재 itemid에 해당하는 측정 항목은 d_items 테이블을 참조하여 label로 해석해야 함 시계열(Time-series) 데이터 분석, 환자 상태 추정, 이상치 탐지 등에 핵심적으로 사용됨
+컬럼 정보
+subject_id: 환자 고유 ID (patients와 연결)
+hadm_id: 입원 단위 ID (admissions와 연결)
+stay_id: ICU 체류 ID (icustays와 연결)
+caregiver_id: 기록한 간호사 또는 의료진 ID
+charttime: 측정 시간 (실제 측정 시각)
+storetime: 저장 시간 (시스템에 저장된 시각)
+itemid: 항목 코드 (d_items에서 label, 단위, 카테고리 등 확인)
+value: 측정값(문자, 텍스트 형태 결과, 예: "HIGH", "NORMAL")
+valuenum: 측정값(수치형, 숫자로 기록된 값, 예: 80, 37.5 등)
+valueuom: 측정 단위 (예: bpm, °C, mmHg)
+warning: 경고 플래그 (데이터 품질 문제 플래그)
+대표적인 측정 항목 예시
+itemid 211: Heart Rate, bpm, 80
+itemid 220045: Mean BP, mmHg, 75
+itemid 220277: Temperature, °C, 36.8
+itemid 226707: SpO2, %, 98
+itemid 220739: Respiratory Rate, bpm, 20
+활용 팁
+시계열 분석: charttime을 기준으로 환자의 상태 변화 흐름 추적 가능
+itemid 매핑 필요: 사람이 이해할 수 있는 데이터로 사용하려면 반드시 d_items와 조인
+수치형/문자형 구분: valuenum이 있는 경우 수치형으로 분석하고, 없으면 value 사용
+수백만 건 이상이므로 분석 전 반드시 itemid, 시간 필터, 환자 필터로 선별 후 조회 필요
+datetimeevents 테이블
+테이블 개요
+ICU 환자에게 기록되는 모든 "날짜/시간 그 자체"가 임상적 의미를 가지는 이벤트만을 따로 저장하는 테이블 예: 중심정맥관 삽입일, 투석 시작일/종료일, 기관삽관일, 주입관 교체일 등 혈압, 맥박 등 "수치 데이터"는 없음 Epic, MetaVision 등 EMR의 특성상 "이벤트성 시점" 기록이 별도로 남아야 환자 경과 추적이 가능하기 때문에 필수로 존재하는 구조
+컬럼 정보
+subject_id: 환자 ID (patients와 외래키)
+hadm_id: 입원 ID (admissions와 외래키)
+stay_id: ICU stay ID (icustays와 외래키)
+caregiver_id: 기록자(임상의) ID (caregivers 외래키)
+charttime: 실제 이벤트(관찰/시술 등) 발생 시각
+storetime: 시스템에 입력/검증된 시각
+itemid: 이벤트 항목 코드 (d_items와 외래키, 무엇에 해당하는 이벤트인지)
+value: 기록 값(해당 이벤트가 발생한 날짜/시각, TIMESTAMP 타입)
+valueuom: 단위 (거의 항상 "Date"/"Date and Time")
+warning: 의료진이 수동 기록한 경고 표시(0/1, auditing용)
+특징
+patients, admissions, icustays, d_items, caregivers 등 거의 모든 코어 테이블과 외래키 연동
+itemid는 d_items에서 label을 반드시 매칭해야 임상 해석 가능
+수치 데이터 없음: value는 반드시 TIMESTAMP, 수치/범주형 없음
+항상 이벤트 시점 데이터: 연속 측정 불가, "특정 순간/시점"만 의미
+시계열 분석/환자 경로 재구성에서 핵심
+MIMIC의 날짜 데이터는 익명화(shifted): 실제 날짜는 아니나 환자 내 timeline 차이는 실제와 동일
+icustays 테이블
+테이블 개요
+ICU(중환자실) 체류 정보를 stay_id 기준으로 관리하는 테이블 한 명의 환자가 여러 번 ICU에 입퇴실할 수 있으므로, 환자 전체 경로(입원, ICU stay, ward 이동 등)에서 "ICU 체류 구간만" 명확하게 식별하는 역할 transfers 테이블에서 "ICU에 해당하는 구간만" 추출+병합해서 만듦
+컬럼 정보
+subject_id: 환자 ID
+hadm_id: 입원 ID
+stay_id: ICU 체류 고유 ID (기본키)
+first_careunit: 첫 입실한 ICU 유형(예: MICU, SICU 등)
+last_careunit: 마지막 퇴실 ICU 유형
+intime: ICU 입실 시각
+outtime: ICU 퇴실 시각
+los: ICU 체류 기간(일 단위, 소수점 가능, Length of Stay)
+특징
+patients(subject_id), admissions(hadm_id)와 기본적으로 연결
+이 테이블을 기준으로 ICU 내 처치/이벤트/투여 등(아래 events류 테이블) 모두 연결됨
+환자별/입원별 여러 ICU stay가 있을 수 있음
+stay_id는 MIMIC 원본(EMR)에는 없는 "인공기본키"
+transfers(병동간 이동 내역)에서 "ICU만 추출+연속병합"해서 만듦
+first/last careunit: 치료 패턴, 전과, outcome 분석에 사용
+ICU 재입실, 전출입, LOS 기반 치료성과/사망률 등 연구의 기준
+ICU 내 처치/이벤트는 모두 이 stay_id에 외래키로 매핑됨
+ingredientevents 테이블
+테이블 개요
+수액/약제 등 "혼합 solution(주입백, infusion bag)"의 각 성분(ingredient)이 투여된 내역을 row 단위로 기록하는 테이블 예: 노르에피네프린+NaCl 혼합 주입 시 → 각 성분별로 한 row씩 한 solution 내 여러 성분의 투여량, 투여속도, 시작/종료 시각, 실제 주문ID(orderid) 등을 모두 추적 주로 inputevents에서 파생(분해)된 구조로 활용됨
+컬럼 정보
+subject_id: 환자 ID
+hadm_id: 입원 ID
+stay_id: ICU stay ID
+caregiver_id: 기록자(임상의) ID
+starttime: 투여 시작 시각
+endtime: 투여 종료 시각
+storetime: 데이터가 입력/검증된 시각
+itemid: 투여 성분 항목 코드(d_items 외래키)
+amount: 실제 투여된 용량
+amountuom: 투여량 단위(ml, mg 등)
+rate: 투여 속도(ml/hr 등, continuous만 해당, bolus는 없음)
+rateuom: 투여속도 단위
+orderid: 혼합액(주문 solution) 단위 식별자
+linkorderid: 주문이 변경되어도 동일 solution으로 연결
+statusdescription: 종료 사유(Changed, FinishedRunning, Paused 등)
+originalamount: 시작 시 solution 내 전체 용량(전부 0)
+originalrate: 시작 시 계획된 투여 속도(실제와 다를 수 있음)
+특징
+patients, admissions, icustays, d_items, caregivers
+orderid/linkorderid: 같은 주입액/solution 내 여러 성분 간 논리적 연결
+"혼합 투여"(주입액에 약+수액 등) 분석에 필수
+itemid, orderid, starttime 조합으로 실제 투여 순서/구성 추적 가능
+rate(속도) 정보로 파생 용량 계산, original값과 실제 투여량 비교 가능
+연속주입, bolus(일회) 모두 기록, bolus는 endtime = starttime + 1분, rate 없음
+환자별, 시간대별, solution별 투여 이력 추적 및 부작용, 용량-결과 분석에 핵심
+INPUTEVENTS 테이블
+테이블 목적: 환자에게 투여된 약물, 수액, 영양 등의 입력 이벤트를 기록
+주요 컬럼:
+SUBJECT_ID: 환자 고유 식별자
+HADM_ID: 입원 고유 식별자
+STAY_ID: ICU 체류 고유 식별자
+STARTTIME: 투여 시작 시간
+ENDTIME: 투여 종료 시간
+STORETIME: 데이터 저장 시간
+ITEMID: 투여 항목 ID (D_ITEMS 테이블과 연결)
+AMOUNT: 투여량
+AMOUNTUOM: 투여량 단위
+RATE: 투여 속도
+RATEUOM: 투여 속도 단위
+ORDERID: 처방 주문 ID
+LINKORDERID: 연결된 처방 주문 ID
+ORDERCATEGORYNAME: 처방 카테고리명
+SECONDARYORDERCATEGORYNAME: 보조 처방 카테고리명
+ORDERCOMPONENTTYPEDESCRIPTION: 처방 구성요소 유형 설명
+ORDERCATEGORYDESCRIPTION: 처방 카테고리 설명
+PATIENTWEIGHT: 환자 체중
+TOTALAMOUNT: 총 투여량
+TOTALAMOUNTUOM: 총 투여량 단위
+ISOPENBAG: 개방형 백 여부
+CONTINUEINNEXTDEPT: 다음 부서 지속 여부
+CANCELREASON: 취소 사유
+STATUSDESCRIPTION: 상태 설명
+ORIGINALAMOUNT: 원래 투여량
+ORIGINALRATE: 원래 투여 속도
+OUTPUTEVENTS 테이블
+테이블 목적: 환자로부터 배출된 체액, 소변, 배액 등의 출력 이벤트를 기록
+주요 컬럼:
+SUBJECT_ID: 환자 고유 식별자
+HADM_ID: 입원 고유 식별자
+STAY_ID: ICU 체류 고유 식별자
+CHARTTIME: 차트 기록 시간
+STORETIME: 데이터 저장 시간
+ITEMID: 출력 항목 ID (D_ITEMS 테이블과 연결)
+VALUE: 출력량 값
+VALUEUOM: 출력량 단위
+PROCEDUREEVENTS 테이블
+테이블 목적: 환자에게 시행된 의료 시술 및 처치를 기록
+주요 컬럼:
+SUBJECT_ID: 환자 고유 식별자
+HADM_ID: 입원 고유 식별자
+STAY_ID: ICU 체류 고유 식별자
+STARTTIME: 시술 시작 시간
+ENDTIME: 시술 종료 시간
+STORETIME: 데이터 저장 시간
+ITEMID: 시술 항목 ID (D_ITEMS 테이블과 연결)
+VALUE: 시술 관련 값
+VALUEUOM: 값의 단위
+LOCATION: 시술 위치
+LOCATIONCATEGORY: 위치 카테고리
+ORDERID: 처방 주문 ID
+LINKORDERID: 연결된 처방 주문 ID
+ORDERCATEGORYNAME: 처방 카테고리명
+SECONDARYORDERCATEGORYNAME: 보조 처방 카테고리명
+ORDERCATEGORYDESCRIPTION: 처방 카테고리 설명
+PATIENTWEIGHT: 환자 체중
+TOTALAMOUNT: 총량
+TOTALAMOUNTUOM: 총량 단위
+ISOPENBAG: 개방형 백 여부
+CONTINUEINNEXTDEPT: 다음 부서 지속 여부
+CANCELREASON: 취소 사유
+STATUSDESCRIPTION: 상태 설명
+ORIGINALAMOUNT: 원래 투여량
+ORIGINALRATE: 원래 투여 속도
+2. PRESCRIPTIONS 테이블 (처방 정보)
+테이블 개요
+PRESCRIPTIONS 테이블은 환자의 약물 처방 정보를 저장하는 핵심 테이블입니다. 총 9818개의 약물 항목과 3가지 약물 유형을 포함하고 있습니다.
+주요 식별자 컬럼
+subject_id: 환자 고유 식별자로 patients 테이블과 조인할 때 사용합니다
+pharmacy_id: 약물 처방 단위 식별자로 각 처방 기록을 구분합니다
+hadm_id: 입원 단위 식별자로 admissions 테이블과 연결됩니다
+poe_id, poe_seq: 주문 Order 정보 연결용으로 약물처방과 시술처방 아이덴트킬에 사용됩니다
+약물 분류 정보 (drug_type)
+약물은 3가지 유형으로 분류됩니다:
+BASE: 기본 정맥 수액 (IV fluid base) - 주요 치료 목적의 핵심 약물로 항생제, 진통제, 혈압약의 주성분에 해당합니다
+ADDITIVE: 첨가제 (Additive to base fluid) - 기본 약물 보조 또는 부작용 완화용으로 비타민, 전해질, 희석액, 안정제 등이 포함됩니다
+MAIN: 주요 투여 약물 (Primary medication) - 치료의 핵심이 되는 주성분으로 복합제에서 가장 중요한 활성 성분을 의미합니다
+주요 처방 약물 (Top 20)
+### **주요 처방 약물 (Top 20 상세 분석)**
+가장 빈번하게 처방되는 약물들과 임상적 중요도는 다음과 같습니다:
+
+#### **생명유지 필수약물 (최고 위험도 )**
+1. **Sodium Chloride** (737,593회, 10.0%): 수액공급과 탈수 치료용 기본 수액. 정상 용량 50-500 mL/hr, 모니터링 항목은 전해질과 부종, 주요 부작용은 고나트륨혈증입니다.
+
+2. **Insulin** (631,411회, 8.6%): 당뇨병과 혈당조절용 내분비계 약물. 정상 용량 0.1-2.0 units/kg/day, 혈당과 HbA1c 모니터링 필수, 저혈당과 케톤산증이 주요 부작용입니다.
+
+3. **Heparin** (336,104회, 4.6%): 혈전 예방과 치료용 항응고제. 정상 용량 5,000-25,000 units/day, aPTT와 혈소판 모니터링 필요, 출혈과 HIT가 주요 부작용입니다.
+
+4. **HYDROmorphone** (294,572회, 4.0%): 중증 통증 관리용 마약성 진통제. 정상 용량 0.2-1mg IV q2-4h, 호흡수와 의식수준 모니터링 필수, 호흡억제와 중독이 주요 부작용입니다.
+
+5. **Vancomycin** (190,442회, 2.6%): MRSA 감염 치료용 항생제. 정상 용량 15-20mg/kg q8-12h, 신기능과 혈중농도 모니터링 필요, 신독성과 이독성이 주요 부작용입니다.
+
+6. **Morphine Sulfate** (158,960회, 2.2%): 중등도-중증 통증용 마약성 진통제. 정상 용량 2-10mg IV q2-4h, 호흡수와 통증점수 모니터링 필요, 호흡억제와 변비가 주요 부작용입니다.
+
+#### **기본 치료약물 (높은 위험도 )**
+7. **Potassium Chloride** (526,118회, 7.2%): 칼륨 보충과 부정맥 예방용 전해질. 정상 용량 20-40 mEq/day, 혈청 K+와 심전도 모니터링 필요, 고칼륨혈증과 심정지가 주요 부작용입니다.
+
+8. **Acetaminophen** (473,926회, 6.5%): 해열과 진통용 해열진통제. 정상 용량 650mg q6h (최대 4g/day), 간기능 모니터링 필요, 간독성과 간괴사가 주요 부작용입니다.
+
+9. **Furosemide** (342,415회, 4.7%): 부종과 심부전 치료용 심혈관계 약물. 정상 용량 20-80mg daily, 전해질과 신기능 모니터링 필요, 저칼륨혈증과 탈수가 주요 부작용입니다.
+
+10. **Magnesium Sulfate** (297,223회, 4.0%): 마그네슘 보충용 전해질. 정상 용량 1-2g IV q6h, 혈청 Mg2+와 반사 모니터링 필요, 호흡억제와 심정지가 주요 부작용입니다.
+
+11. **Metoprolol Tartrate** (254,114회, 3.5%): 고혈압과 협심증 치료용 심혈관계 약물. 정상 용량 25-100mg BID, 혈압과 심박수 모니터링 필요, 서맥과 저혈압이 주요 부작용입니다.
+
+12. **Aspirin** (154,010회, 2.1%): 심혈관 예방과 해열용 항혈소판제. 정상 용량 81mg daily (예방용), 출혈과 위장관 증상 모니터링 필요, 위장관 출혈과 이명이 주요 부작용입니다.
+
+#### **수액 및 영양 공급 (낮은 위험도 )**
+13. **Iso-Osmotic Dextrose** (261,231회, 3.6%): 수액 공급과 저혈당 치료용. 정상 용량 50-500 mL/hr, 혈당과 전해질 모니터링 필요, 고혈당과 부종이 주요 부작용입니다.
+
+14. **Lactated Ringers** (170,517회, 2.3%): 등장성 수액 공급용. 정상 용량 50-500 mL/hr, 전해질과 산염기 모니터링 필요, 부종과 전해질 불균형이 주요 부작용입니다.
+
+15. **Dextrose** (162,459회, 2.2%): 저혈당 치료용 수액. 정상 용량 25-50g IV PRN, 혈당 모니터링 필요, 고혈당과 정맥염이 주요 부작용입니다.
+
+16. **Bag** (265,786회, 3.6%): 수액 포장 및 운반용 용기로 직접적인 약물은 아닙니다.
+
+#### **위장관계 관리 (낮은 위험도 )**
+17. **Docusate Sodium** (319,973회, 4.4%): 변비 예방용 위장관계 약물. 정상 용량 100mg BID, 배변 패턴 모니터링 필요, 설사가 드문 부작용입니다.
+
+18. **Senna** (254,228회, 3.5%): 변비 치료용 위장관계 약물. 정상 용량 8.6mg 1-2정 qHS, 배변 패턴 모니터링 필요, 복부 경련과 설사가 주요 부작용입니다.
+
+19. **Ondansetron** (221,216회, 3.0%): 구토 방지용 위장관계 약물. 정상 용량 4-8mg q8h, 구토 빈도 모니터링 필요, QT 연장과 변비가 주요 부작용입니다.
+
+20. **Bisacodyl** (182,312회, 2.5%): 변비 치료용 위장관계 약물. 정상 용량 5-10mg daily, 배변 패턴 모니터링 필요, 복부 경련이 주요 부작용입니다.
+약물 형태 및 투약 경로
+form_rx: 87가지 약물 형태 (정제, 주사제, 시럽, 패치 등)
+약물 형태 (form_rx) 87개 목록
+AERA 또는 AERO는 에어로졸로 분무 형태의 호흡기 약물입니다. AMP는 앰플로 주사제 용기입니다. BOTTLE은 병 단위 포장입니다. CADD는 CADD 펌프로 휴대형 약물 주입기입니다. CAP는 캡슐형 제제입니다. CART는 카트리지로 인슐린 등에 사용됩니다. CONC는 농축액입니다. CPT는 캡슐형 정제입니다. CRE 또는 CREA는 크림형 외용제입니다. DEV는 의료기기 관련입니다. DOSE PACK은 복약 스케줄 패키지입니다. DROPS는 점안, 점이, 점비 등 점적제입니다. DT는 분산성 정제로 물에 녹여 복용합니다. ELIX는 엘릭서로 시럽 형태입니다. ENE는 관장약입니다. EPI PEN은 에피네프린 자동 주사기입니다. ERC 또는 ERT는 서방형 제제로 서서히 약물을 방출합니다. FILM은 필름형 용해제입니다. FOA 또는 FOAM은 거품형 외용제입니다. GEL 또는 GELS는 겔 형태 외용제입니다. GRAN 또는 GRAR은 과립형 제제입니다. GUM 또는 GUMMY는 씹는 껌 또는 구미제입니다. IMP는 이식형 제제입니다. INH는 흡입제로 천식 등에 사용됩니다. INJ는 주사제입니다. INS는 질정 또는 삽입형 제제입니다. ITEM은 기타 항목입니다. JEL은 젤리 형태입니다. KIT는 키트형 패키지입니다. LIQ는 액상제입니다. LOT는 로션형 외용제입니다. LOZ는 트로키로 입에서 녹이는 정제입니다. MDI는 정량식 흡입기입니다. MWSH는 구강세척제입니다. OIL은 오일 형태입니다. OINT 또는 OOINT는 연고입니다. OP, OPSOL, OPSUS는 점안액 또는 현탁액으로 안과용입니다. OTSOL 또는 OTSUS는 점이액 또는 현탁액으로 귀용입니다. PACK은 포장형입니다. PAD 또는 PAS는 패드 또는 패치형으로 피부에 부착합니다. PEN은 펜형 자동주사기입니다. PKG 또는 PKT는 패키지 또는 개별포장입니다. PTCH는 피부 부착 패치입니다. PUFF는 흡입 분사량 단위입니다. PUMP는 펌프형 분사기입니다. PWDI 또는 PWDR은 분말제입니다. RING은 질내 링제로 피임 등에 사용됩니다. SHMP는 샴푸형 외용제입니다. SL TAB는 설하정으로 혀 밑에서 복용합니다. SOLN은 용액입니다. SPG는 스프레이입니다. SPR은 분사제로 소량 분무입니다. STK는 스틱형 외용제입니다. STRP는 스트립형 용해제입니다. SUPP는 좌약입니다. SUSP는 현탁액입니다. SYR 또는 SYRI는 주사기입니다. SYRP는 시럽형 제제입니다. TAB 또는 TABLET는 정제입니다. TAPE는 의료용 테이프입니다. TC, TERF, TOP는 외용제입니다. TROC는 트로키로 녹여서 복용하는 형태입니다. TUBE는 튜브 포장입니다. UNIT는 단위입니다. VIAL은 바이알 용기입니다. WAF는 웨이퍼형 제제로 녹는 형태입니다.
+
+route: 99가지 투약 경로 (경구, 정맥, 근육, 피하, 흡입 등)
+AC는 식전 투약입니다. AD는 오른쪽 귀입니다. AERO는 에어로졸 흡입입니다. AS는 왼쪽 귀입니다. AU는 양쪽 귀입니다. AXILLARY는 겨드랑이 투여입니다. BU 또는 BUCCAL은 볼 점막 구강 내 투여입니다. BOTH EARS는 양쪽 귀입니다. BOTH EYES는 양쪽 눈입니다. DIALYS는 투석 라인입니다. DLPICC는 이중관 중심정맥 카테터입니다. DWELL은 주입 후 유지시간입니다. ED는 응급실 투여입니다. EDPCA는 응급통증 자가조절입니다. ENTERAL TUBE ONLY는 경장영양관으로 경구 불가시 사용입니다. ET는 기관내 투여입니다. EX-VIVO는 체외 투여입니다. FEMORAL VEIN은 대퇴정맥입니다. FLUSH는 라인 플러시입니다. G TUBE는 위루관입니다. IA는 동맥내 주사입니다. IC는 심장내 주사입니다. ID는 피내 주사입니다. IJ는 경정맥입니다. IL은 병변내 주사입니다. IM은 근육주사입니다. IMPELLA는 심장보조장치입니다. IN은 비강투여입니다. INH 또는 INHALATION은 흡입제입니다. INTRACORPOREAL은 체내 투여입니다. INTRA-ARTERIALLY는 동맥내 주사입니다. INTRALESIONAL은 병변내 주사입니다. INTRAPERICARDIAL은 심장막내 투여입니다. INTRAPLEURAL은 흉막강내 투여입니다. INTRAVITREAL은 안구 내 투여입니다. IP는 복강내 투여입니다. IR 또는 IRR은 세척용입니다. IT는 척수강내 투여입니다. ITPCA는 척수강내 자가통증조절입니다. IU는 자궁내 투여입니다. IV는 정맥주사입니다. IV BOLUS는 일회성 정맥주사입니다. IV DRIP 또는 IV INFUSION은 정맥 점적 주입입니다. IV FLUSH는 정맥라인 세척입니다. IVPCA는 정맥 자가통증조절입니다. IVS는 정맥내 투여입니다. IVT는 뇌실내 투여입니다. IVCI는 지속정맥주입입니다. J TUBE는 공장루관입니다. LOCK은 정맥잠금입니다. LEFT EAR는 왼쪽 귀입니다. LEFT EYE는 왼쪽 눈입니다. LUMBAR PLEXUS는 요추 신경차단입니다. NAS, NG, NG/OG는 비위관입니다. ND는 정의되지 않음입니다. NEB는 분무흡입기입니다. NS는 미지정입니다. NU는 비강 사용입니다. OG, PO/OG, PO/NG는 구강-위관입니다. ORAL 또는 PO는 구강 투여입니다. OS는 왼쪽 눈입니다. OU는 양쪽 눈입니다. OD 또는 RIGHT EYE는 오른쪽 눈입니다. PB는 통증 차단입니다. PERIPHNERVE는 말초신경입니다. PKG REPLACE는 기구 교체입니다. PL은 복막세척입니다. PO OR ENTERAL TUBE는 경구 또는 튜브입니다. PO/IV는 경구 또는 정맥입니다. PR은 직장투여입니다. PTPUMP, SCPUMP, SCPCA는 피하주입입니다. PV는 질내 투여입니다. RIGHT EAR는 오른쪽 귀입니다. REPLACE는 교체입니다. SC 또는 SUBCUT는 피하주사입니다. SIDE PORT는 주입포트입니다. SL은 설하 투여입니다. SUPP는 좌약입니다. TD 또는 TRANSDERMAL은 경피제입니다. TP 또는 TT는 국소도포입니다. TROC는 트로키로 입안에 녹이는 약입니다. VG는 질내 투여입니다.
+용량 및 처방 정보
+prod_strength: 제형 강도 (예: 50mg Tablet)
+dose_val_rx, dose_unit_rx: 처방 용량 값과 단위
+starttime, stoptime: 약물 처방 시작 및 종료 시간
+doses_per_24_hrs: 1일 복용 횟수
+
+3. SERVICES 테이블 (진료과 정보)
+테이블 개요
+SERVICES 테이블은 환자의 진료과 이동 및 담당 변경 이력을 기록합니다.
+주요 컬럼
+curr_service: 현재 담당 진료과 (19개 진료과)
+prev_service: 이전 담당 진료과 (첫 입원시 NULL)
+transfertime: 진료과 이동 시간
+주요 진료과 분류
+내과계: MED (내과), CMED (심장내과), NMED (신경과), OMED (종양내과)
+외과계: SURG (일반외과), NSURG (신경외과), CSURG (심장외과), TSURG (흉부외과), VSURG (혈관외과), ORTHO (정형외과), TRAUM (외상외과)
+특수과: ENT (이비인후과), EYE (안과), GYN (산부인과), OBS (산과), DENT (치과)
+정신과: PSYCH (정신건강의학과)
+
+4. TRANSFERS 테이블 (병동 이동 정보)
+테이블 개요
+TRANSFERS 테이블은 환자의 병원 내 이동 경로를 상세히 기록합니다.
+이동 유형 (eventtype)
+admit: 입원 - 환자가 병원에 입원한 시점
+discharge: 퇴원 - 환자가 병원을 퇴원한 시점
+transfer: 병동/병실 이동 - 환자가 병원 내에서 다른 병동, ICU, 병실로 이동
+ED: 응급실 - 환자가 응급실에 내원 또는 체류한 시점
+주요 병동 분류 (careunit)
+중환자실: MICU (내과중환자실), SICU (외과중환자실), CCU (관상동맥중환자실), CVICU (심혈관중환자실)
+일반병동: Med/Surg (내외과 혼합), Medicine (내과), Surgery (외과)
+특수병동: Emergency Department (응급실), PACU (회복실), Labor & Delivery (분만실)
+전문병동: Cardiology (심장내과), Neurology (신경과), Hematology/Oncology (혈액종양내과)
+
+5. D_ITEMS 테이블 (측정항목 사전)
+테이블 개요
+D_ITEMS 테이블은 모든 ICU 측정 항목의 사전 역할을 하는 핵심 테이블입니다. 3888개의 다양한 측정 항목을 포함하고 있습니다.
+핵심 컬럼
+itemid: 항목 고유 코드
+label: 측정항목명 (병원의 모든 측정 용어 정리본)
+linksto: 연결되는 테이블명 (chartevents, inputevents, outputevents 등)
+category: 임상적 분류 (81개 카테고리)
+param_type: 값의 유형 (숫자형, 텍스트, 날짜시간 등)
+주요 측정 항목 카테고리
+생체징후 관련
+Temperature Celsius/Fahrenheit: 환자 체온 (정상범위: 36.1-37.5°C)
+Non-Invasive Blood Pressure: 비침습적 혈압 측정
+Heart Rate: 심박수 측정
+Respiratory Rate: 호흡수 측정
+알람 관련
+Non-Invasive Blood Pressure Alarm - High: 고혈압 알람 (수축기 >180mmHg)
+Non-Invasive Blood Pressure Alarm - Low: 저혈압 알람 (수축기 <90mmHg)
+임상 평가 도구
+Riker-SAS Scale: ICU 환자의 진정 및 각성 수준 평가 (1-7점 척도)
+Risk for Falls: 환자의 낙상 위험도 평가
+Code Status: 심폐소생술 시행 여부에 대한 환자/가족 의사
+검사실 수치
+TCO2 (calc) Venous: 정맥혈 총 이산화탄소 농도 (정상범위: 24-30 mEq/L)
+간호 및 치료 관리
+Health Care Proxy: 환자가 의사결정 능력이 없을 때의 법정 대리인
+Precautions: Standard +: 표준 주의사항과 추가 격리 조치
+Bladder Pressure: 방광 내압 측정 (정상범위: <15 cmH2O)
+
+6. CHARTEVENTS 테이블 (환자 기록 이벤트)
+테이블 개요
+CHARTEVENTS 테이블은 환자의 모든 간호기록, 바이탈사인, 모니터링 항목을 저장하는 가장 큰 테이블입니다.
+주요 컬럼
+charttime: 측정 시간 (10,349,074개 기록)
+itemid: d_items 테이블과 연결되는 측정 항목 코드 (2,227개 항목)
+value: 문자형 측정값 (28,212개 값)
+valuenum: 수치형 측정값 (24,359개 값)
+valueuom: 측정 단위 (57개 단위)
+warning: 경고 플래그 (0=정상, 1=비정상 가능성)
+

@@ -1,0 +1,904 @@
+<!-- tab0.html -->
+<style>
+/* 기본 스타일 */
+.ecrf-tab-btn {
+  background: none;
+  border: 1.5px solid transparent;
+  color: #3A86FF;
+  font-weight: 600;
+  font-size: 1em;
+  padding: 12px 20px;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+  border-radius: 8px;
+  margin: 4px 8px 4px 0;
+  text-align: left;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.ecrf-tab-btn:hover {
+  background-color: #F1F3F5;
+  color: #0056b3;
+}
+
+.ecrf-tab-btn.active {
+  background-color: #3A86FF;
+  color: white;
+  border-color: #3A86FF;
+}
+
+.ecrf-form-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+  font-size: 0.95em;
+}
+
+.ecrf-form-table td {
+  padding: 12px 15px;
+  border-bottom: 1px solid #E9ECEF;
+  vertical-align: top;
+}
+
+.ecrf-form-table td:first-child {
+  background: #F8F9FA;
+  font-weight: 600;
+  width: 150px;
+  color: #495057;
+}
+
+/* 3열 체크박스 그룹 스타일 */
+.column-checkbox-group {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px 20px;
+  align-items: start;
+}
+
+.column-checkbox-group label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9em;
+  color: #495057;
+  cursor: pointer;
+  padding: 4px 0;
+  line-height: 1.4;
+}
+
+.column-checkbox-group input[type="checkbox"] {
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.ecrf-save-btn {
+  background: #3A86FF;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  font-weight: bold;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1.05em;
+}
+
+.ecrf-save-btn:hover {
+  background: #0056b3;
+}
+
+h2 {
+  margin-bottom: 24px;
+  color: #343A40;
+  border-bottom: 2px solid #DEE2E6;
+  padding-bottom: 10px;
+}
+
+h3 {
+  margin-top: 30px;
+  margin-bottom: 10px;
+  color: #3A86FF;
+  font-size: 1.2em;
+  border-left: 4px solid #3A86FF;
+  padding-left: 10px;
+}
+
+/* 챗봇 스타일 */
+#tab-chatbot-area {
+  height: calc(100vh - 200px);
+  display: flex;
+  flex-direction: column;
+}
+
+#tab-chatbot-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  min-height: 400px;
+}
+
+#tab-chatbot-input-area {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+#tab-chatbot-input {
+  flex: 1;
+  padding: 12px 16px;
+  border: 1.5px solid #dee2e6;
+  border-radius: 24px;
+  font-size: 1em;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+#tab-chatbot-input:focus {
+  border-color: #3A86FF;
+}
+
+#tab-chatbot-send {
+  background: #3A86FF !important;
+  color: white !important;
+  border: none !important;
+  padding: 12px 24px !important;
+  border-radius: 20px !important;
+  cursor: pointer !important;
+  font-weight: 600 !important;
+  transition: background-color 0.2s !important;
+  z-index: 999999 !important;
+  position: relative !important;
+  pointer-events: auto !important;
+}
+
+#tab-chatbot-send:hover {
+  background: #0056b3 !important;
+}
+
+/* 채팅 메시지 스타일 */
+.chat-message {
+  margin-bottom: 15px;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-message.user {
+  align-items: flex-end;
+}
+
+.chat-message.ai {
+  align-items: flex-start;
+}
+
+.message-content {
+  max-width: 70%;
+  padding: 12px 16px;
+  border-radius: 12px;
+  word-wrap: break-word;
+  font-size: 0.95em;
+}
+
+.chat-message.user .message-content {
+  background: #3A86FF;
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.chat-message.ai .message-content {
+  background: #e9ecef;
+  color: #343A40;
+  border-bottom-left-radius: 4px;
+}
+
+/* 버튼 위치 수정 */
+#reset-settings-btn {
+  position: fixed !important;
+  bottom: 70px !important;
+  left: 300px !important;
+  z-index: 99999 !important;
+  width: auto !important;
+  height: 35px !important;
+  padding: 8px 12px !important;
+  background: #6C757D !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  font-size: 13px !important;
+  pointer-events: auto !important;
+}
+
+#save-settings-btn {
+  position: fixed !important;
+  bottom: 70px !important;
+  left: 400px !important;
+  z-index: 99999 !important;
+  width: auto !important;
+  height: 35px !important;
+  padding: 8px 12px !important;
+  background: #3A86FF !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  font-size: 13px !important;
+  pointer-events: auto !important;
+}
+
+#apply-settings-btn {
+  position: fixed !important;
+  bottom: 70px !important;
+  left: 480px !important;
+  z-index: 99999 !important;
+  width: auto !important;
+  height: 35px !important;
+  padding: 8px 12px !important;
+  background: #0069D9 !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  font-size: 13px !important;
+  pointer-events: auto !important;
+}
+</style>
+
+<div id="ecrf-wrap" style="display: flex; height: 100%; font-family: 'Noto Sans KR', sans-serif;">
+  <!-- 좌측 네비게이션 -->
+  <aside style="width: 240px; background: #f8f9fa; border-right: 1.5px solid #dee2e6; padding: 20px 0;">
+    <nav style="display: flex; flex-direction: column; gap: 8px;">
+      <button class="ecrf-tab-btn" data-tab="tab-column-settings">컬럼 설정</button>
+      <button class="ecrf-tab-btn" data-tab="tab-chatbot">챗봇</button>
+    </nav>
+  </aside>
+
+  <!-- 우측 콘텐츠 -->
+  <main style="flex: 1; padding: 32px; overflow-y: auto; background: #fff;">
+
+    <!-- tab0.html의 컬럼 설정 섹션 - 프리셋 기능 추가 버전 -->
+
+    <section id="tab-column-settings" class="ecrf-tab-content">
+      <h2>컬럼 설정</h2>
+
+      <!-- 프리셋 선택 영역 -->
+      <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 30px; border: 1px solid #dee2e6;">
+        <h4 style="margin: 0 0 15px 0; color: #495057;">설정 프리셋</h4>
+        <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+          <label style="font-weight: 500; color: #495057;">프리셋 선택:</label>
+          <select id="preset-selector" style="padding: 8px 12px; border: 1px solid #ced4da; border-radius: 6px; background: white; min-width: 200px;">
+            <option value="">사용자 정의</option>
+            <option value="basic">기본 설정 (환자ID, 성별, 나이)</option>
+            <option value="detailed">상세 분석 (모든 주요 컬럼)</option>
+            <option value="simple">간단 조회 (최소 컬럼)</option>
+            <option value="research">연구용 (임상시험 중심)</option>
+          </select>
+          <button id="save-as-preset-btn" style="background: #28a745; color: white; padding: 8px 16px; border: none; border-radius: 6px; font-size: 0.9em; cursor: pointer;">현재 설정을 프리셋으로 저장</button>
+        </div>
+      </div>
+
+      <div id="column-settings-content">
+
+        <!-- 1. 환자/입원 설정 -->
+        <h3>환자/입원 분석</h3>
+        <table class="ecrf-form-table">
+          <tr><td>환자 기본정보</td><td class="column-checkbox-group">
+            <label><input type="checkbox" name="환자/입원" value="subject_id" /> SUBJECT_ID (환자ID) </label>
+            <label><input type="checkbox" name="환자/입원" value="gender"  /> GENDER (성별) </label>
+            <label><input type="checkbox" name="환자/입원" value="anchor_age" /> ANCHOR_AGE (나이) </label>
+            <label><input type="checkbox" name="환자/입원" value="dod" /> DOD (사망일)</label>
+            <label><input type="checkbox" name="환자/입원" value="anchor_year" /> ANCHOR_YEAR (기준년도)</label>
+            <label><input type="checkbox" name="환자/입원" value="anchor_year_group" /> ANCHOR_YEAR_GROUP (연도그룹)</label>
+          </td></tr>
+          <tr><td>입원정보</td><td class="column-checkbox-group">
+            <label><input type="checkbox" name="환자/입원" value="hadm_id" /> HADM_ID (입원ID)</label>
+            <label><input type="checkbox" name="환자/입원" value="admittime" /> ADMITTIME (입원시각)</label>
+            <label><input type="checkbox" name="환자/입원" value="dischtime" /> DISCHTIME (퇴원시각)</label>
+            <label><input type="checkbox" name="환자/입원" value="admission_type" /> ADMISSION_TYPE (입원유형)</label>
+            <label><input type="checkbox" name="환자/입원" value="discharge_location" /> DISCHARGE_LOCATION (퇴원위치)</label>
+            <label><input type="checkbox" name="환자/입원" value="insurance" /> INSURANCE (보험유형)</label>
+          </td></tr>
+          <tr><td>ICU정보</td><td class="column-checkbox-group">
+            <label><input type="checkbox" name="환자/입원" value="stay_id" /> STAY_ID (ICU입원ID)</label>
+            <label><input type="checkbox" name="환자/입원" value="intime" /> INTIME (입실시각)</label>
+            <label><input type="checkbox" name="환자/입원" value="outtime" /> OUTTIME (퇴실시각)</label>
+            <label><input type="checkbox" name="환자/입원" value="los" /> LOS (재원기간)</label>
+            <label><input type="checkbox" name="환자/입원" value="first_careunit" /> FIRST_CAREUNIT (최초ICU)</label>
+            <label><input type="checkbox" name="환자/입원" value="last_careunit" /> LAST_CAREUNIT (최종ICU)</label>
+          </td></tr>
+        </table>
+
+        <!-- 2. 검사/바이탈 설정 -->
+        <h3>검사/바이탈 분석</h3>
+        <table class="ecrf-form-table">
+          <tr><td>검사 기본정보</td><td class="column-checkbox-group">
+            <label><input type="checkbox" name="검사/바이탈" value="subject_id" /> SUBJECT_ID (환자ID) </label>
+            <label><input type="checkbox" name="검사/바이탈" value="hadm_id" /> HADM_ID (입원ID) </label>
+            <label><input type="checkbox" name="검사/바이탈" value="itemid"  /> ITEMID (항목ID) </label>
+            <label><input type="checkbox" name="검사/바이탈" value="charttime" /> CHARTTIME (측정시각) </label>
+            <label><input type="checkbox" name="검사/바이탈" value="value"  /> VALUE (값) </label>
+            <label><input type="checkbox" name="검사/바이탈" value="label" /> LABEL (항목명)</label>
+          </td></tr>
+          <tr><td>측정값 상세</td><td class="column-checkbox-group">
+            <label><input type="checkbox" name="검사/바이탈" value="valuenum" /> VALUENUM (수치값)</label>
+            <label><input type="checkbox" name="검사/바이탈" value="valueuom" /> VALUEUOM (단위)</label>
+            <label><input type="checkbox" name="검사/바이탈" value="warning" /> WARNING (경고)</label>
+            <label><input type="checkbox" name="검사/바이탈" value="flag" /> FLAG (플래그)</label>
+            <label><input type="checkbox" name="검사/바이탈" value="storetime" /> STORETIME (저장시각)</label>
+            <label><input type="checkbox" name="검사/바이탈" value="specimen_id" /> SPECIMEN_ID (검체ID)</label>
+          </td></tr>
+          <tr><td>미생물검사</td><td class="column-checkbox-group">
+            <label><input type="checkbox" name="검사/바이탈" value="test_name" /> TEST_NAME (검사명)</label>
+            <label><input type="checkbox" name="검사/바이탈" value="org_name" /> ORG_NAME (미생물명)</label>
+            <label><input type="checkbox" name="검사/바이탈" value="ab_name" /> AB_NAME (항생제명)</label>
+            <label><input type="checkbox" name="검사/바이탈" value="interpretation" /> INTERPRETATION (결과해석)</label>
+            <label><input type="checkbox" name="검사/바이탈" value="comments" /> COMMENTS (비고)</label>
+          </td></tr>
+        </table>
+
+        <!-- 3. 진단/시술 설정 -->
+        <h3>진단/시술 분석</h3>
+        <table class="ecrf-form-table">
+          <tr><td>진단 기본정보</td><td class="column-checkbox-group">
+            <label><input type="checkbox" name="진단/시술" value="subject_id"/> SUBJECT_ID (환자ID) </label>
+            <label><input type="checkbox" name="진단/시술" value="hadm_id" /> HADM_ID (입원ID) </label>
+            <label><input type="checkbox" name="진단/시술" value="icd_code" /> ICD_CODE (진단코드) </label>
+            <label><input type="checkbox" name="진단/시술" value="seq_num"  /> SEQ_NUM (순번) </label>
+            <label><input type="checkbox" name="진단/시술" value="short_title" /> SHORT_TITLE (진단명)</label>
+            <label><input type="checkbox" name="진단/시술" value="long_title" /> LONG_TITLE (상세진단명)</label>
+          </td></tr>
+          <tr><td>DRG정보</td><td class="column-checkbox-group">
+            <label><input type="checkbox" name="진단/시술" value="drg_code" /> DRG_CODE (DRG코드)</label>
+            <label><input type="checkbox" name="진단/시술" value="drg_type" /> DRG_TYPE (DRG유형)</label>
+            <label><input type="checkbox" name="진단/시술" value="description" /> DESCRIPTION (설명)</label>
+            <label><input type="checkbox" name="진단/시술" value="drg_severity" /> DRG_SEVERITY (중증도)</label>
+            <label><input type="checkbox" name="진단/시술" value="drg_mortality" /> DRG_MORTALITY (사망위험)</label>
+            <label><input type="checkbox" name="진단/시술" value="icd_version" /> ICD_VERSION (ICD버전)</label>
+          </td></tr>
+        </table>
+
+        <!-- 4. 약물/투약 설정 -->
+        <h3>약물/투약 분석</h3>
+        <table class="ecrf-form-table">
+          <tr><td>처방 기본정보</td><td class="column-checkbox-group">
+            <label><input type="checkbox" name="약물/투약" value="subject_id"  /> SUBJECT_ID (환자ID) </label>
+            <label><input type="checkbox" name="약물/투약" value="hadm_id"  /> HADM_ID (입원ID) </label>
+            <label><input type="checkbox" name="약물/투약" value="drug"  /> DRUG (약품명) </label>
+            <label><input type="checkbox" name="약물/투약" value="starttime" /> STARTTIME (시작시각) </label>
+            <label><input type="checkbox" name="약물/투약" value="endtime" /> ENDTIME (종료시각)</label>
+            <label><input type="checkbox" name="약물/투약" value="drug_type" /> DRUG_TYPE (약물분류)</label>
+          </td></tr>
+          <tr><td>투약 상세</td><td class="column-checkbox-group">
+            <label><input type="checkbox" name="약물/투약" value="dose_val_rx" /> DOSE_VAL_RX (처방용량)</label>
+            <label><input type="checkbox" name="약물/투약" value="dose_unit_rx" /> DOSE_UNIT_RX (용량단위)</label>
+            <label><input type="checkbox" name="약물/투약" value="medication" /> MEDICATION (투약약물)</label>
+            <label><input type="checkbox" name="약물/투약" value="charttime" /> CHARTTIME (투약시각)</label>
+            <label><input type="checkbox" name="약물/투약" value="event_txt" /> EVENT_TXT (이벤트)</label>
+            <label><input type="checkbox" name="약물/투약" value="orderid" /> ORDERID (오더ID)</label>
+          </td></tr>
+          <tr><td>수액/투여</td><td class="column-checkbox-group">
+            <label><input type="checkbox" name="약물/투약" value="amount" /> AMOUNT (투여량)</label>
+            <label><input type="checkbox" name="약물/투약" value="amountuom" /> AMOUNTUOM (투여단위)</label>
+            <label><input type="checkbox" name="약물/투약" value="rate" /> RATE (투여속도)</label>
+            <label><input type="checkbox" name="약물/투약" value="rateuom" /> RATEUOM (속도단위)</label>
+            <label><input type="checkbox" name="약물/투약" value="totalamount" /> TOTALAMOUNT (총투여량)</label>
+          </td></tr>
+        </table>
+
+        <!-- 5. 임상시험 설정 -->
+        <h3>임상시험 분석</h3>
+        <table class="ecrf-form-table">
+          <tr><td>기본정보</td><td class="column-checkbox-group">
+            <label><input type="checkbox" name="임상시험" value="subject_id" checked disabled /> SUBJECT_ID (환자ID) </label>
+            <label><input type="checkbox" name="임상시험" value="hadm_id" checked disabled /> HADM_ID (입원ID) </label>
+            <label><input type="checkbox" name="임상시험" value="gender" /> GENDER (성별)</label>
+            <label><input type="checkbox" name="임상시험" value="anchor_age" /> ANCHOR_AGE (나이)</label>
+            <label><input type="checkbox" name="임상시험" value="admittime" /> ADMITTIME (입원일)</label>
+          </td></tr>
+          <tr><td>진단/약물</td><td class="column-checkbox-group">
+            <label><input type="checkbox" name="임상시험" value="icd_code" /> ICD_CODE (진단코드)</label>
+            <label><input type="checkbox" name="임상시험" value="short_title" /> SHORT_TITLE (진단명)</label>
+            <label><input type="checkbox" name="임상시험" value="drug" /> DRUG (약품명)</label>
+            <label><input type="checkbox" name="임상시험" value="drug_type" /> DRUG_TYPE (약물분류)</label>
+          </td></tr>
+          <tr><td>검사/임상시험</td><td class="column-checkbox-group">
+            <label><input type="checkbox" name="임상시험" value="itemid" /> ITEMID (검사항목)</label>
+            <label><input type="checkbox" name="임상시험" value="value" /> VALUE (검사값)</label>
+            <label><input type="checkbox" name="임상시험" value="charttime" /> CHARTTIME (검사시각)</label>
+          </td></tr>
+        </table>
+
+        <!-- 버튼 그룹 -->
+        <button id="reset-settings-btn" style="background: #6c757d; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 1.05em;">초기화</button>
+      </div>
+    </section>
+
+    <!-- 챗봇 -->
+    <section id="tab-chatbot" class="ecrf-tab-content" style="display:none;">
+      <h2>AI 어시스턴트</h2>
+
+      <!-- 시스템 메시지 -->
+      <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 15px; margin-bottom: 20px; text-align: center; color: #856404;">
+        💡 현재 컬럼 설정이 적용된 채팅입니다
+      </div>
+
+      <!-- 챗봇 영역 -->
+      <div id="tab-chatbot-area">
+        <!-- 채팅 메시지 영역 -->
+        <div id="tab-chatbot-messages">
+          <div class="chat-message ai">
+            <div class="message-content">
+              안녕하세요! 의료 데이터 분석을 도와드릴 AI 어시스턴트입니다. 무엇을 도와드릴까요?
+            </div>
+          </div>
+        </div>
+
+        <!-- 입력 영역 -->
+        <div id="tab-chatbot-input-area">
+          <input type="text" id="tab-chatbot-input" placeholder="메시지를 입력하세요... (예: 65세 이상 환자 목록 조회)">
+          <button id="tab-chatbot-send" onclick="sendMessage();" style="z-index: 999999 !important; position: relative !important;">전송</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+// 프리셋 정의
+const COLUMN_PRESETS = {
+  basic: {
+    name: "기본 설정",
+    settings: {
+      "환자/입원": ["hadm_id", "admittime", "dischtime"],
+      "검사/바이탈": ["label", "valuenum", "valueuom"],
+      "진단/시술": ["short_title"],
+      "약물/투약": ["endtime", "drug_type"],
+      "임상시험": ["gender", "anchor_age"]
+    }
+  },
+  detailed: {
+    name: "상세 분석",
+    settings: {
+      "환자/입원": ["dod", "hadm_id", "admittime", "dischtime", "admission_type", "stay_id", "intime", "outtime", "los"],
+      "검사/바이탈": ["label", "valuenum", "valueuom", "storetime", "warning", "test_name", "org_name"],
+      "진단/시술": ["short_title", "long_title", "drg_code", "drg_severity"],
+      "약물/투약": ["endtime", "drug_type", "dose_val_rx", "medication", "amount", "rate"],
+      "임상시험": ["gender", "anchor_age", "admittime", "icd_code", "drug", "itemid", "value"]
+    }
+  },
+  simple: {
+    name: "간단 조회",
+    settings: {
+      "환자/입원": ["hadm_id"],
+      "검사/바이탈": ["label", "valuenum"],
+      "진단/시술": ["short_title"],
+      "약물/투약": ["drug_type"],
+      "임상시험": ["gender"]
+    }
+  },
+  research: {
+    name: "연구용",
+    settings: {
+      "환자/입원": ["hadm_id", "admittime", "anchor_year"],
+      "검사/바이탈": ["label", "valuenum", "charttime", "test_name", "interpretation"],
+      "진단/시술": ["short_title", "icd_version", "drg_severity"],
+      "약물/투약": ["drug_type", "starttime", "endtime", "amount"],
+      "임상시험": ["gender", "anchor_age", "admittime", "icd_code", "short_title", "drug", "itemid", "value", "charttime"]
+    }
+  }
+};
+
+// 사용자 정의 프리셋 저장소
+let userPresets = JSON.parse(localStorage.getItem('userColumnPresets') || '{}');
+
+// 현재 설정을 프리셋으로 저장
+document.getElementById('save-as-preset-btn').onclick = function() {
+  const presetName = prompt('프리셋 이름을 입력하세요:');
+  if (!presetName) return;
+
+  const currentSettings = {};
+  const categories = ["환자/입원", "검사/바이탈", "진단/시술", "약물/투약", "임상시험"];
+
+  categories.forEach(category => {
+    const checkedBoxes = document.querySelectorAll(`input[name="${category}"]:checked`);
+    currentSettings[category] = Array.from(checkedBoxes).map(cb => cb.value);
+  });
+
+  userPresets[presetName] = {
+    name: presetName,
+    settings: currentSettings
+  };
+
+  localStorage.setItem('userColumnPresets', JSON.stringify(userPresets));
+
+  // 프리셋 선택 드롭다운에 추가
+  updatePresetSelector();
+
+  alert(`"${presetName}" 프리셋이 저장되었습니다.`);
+};
+
+// 프리셋 선택 드롭다운 업데이트
+function updatePresetSelector() {
+  const selector = document.getElementById('preset-selector');
+
+  // 사용자 정의 프리셋 옵션들 제거
+  Array.from(selector.options).forEach(option => {
+    if (!['', 'basic', 'detailed', 'simple', 'research'].includes(option.value)) {
+      option.remove();
+    }
+  });
+
+  // 사용자 정의 프리셋 추가
+  Object.entries(userPresets).forEach(([key, preset]) => {
+    const option = document.createElement('option');
+    option.value = key;
+    option.textContent = `${preset.name} (사용자 정의)`;
+    selector.appendChild(option);
+  });
+}
+
+// 이 코드들로 교체
+document.getElementById('preset-selector').onchange = function() {
+  const selectedPreset = this.value;
+  if (!selectedPreset) return;
+
+  const preset = COLUMN_PRESETS[selectedPreset] || userPresets[selectedPreset];
+  if (!preset) return;
+
+  document.querySelectorAll('input[type="checkbox"]:not([disabled])').forEach(cb => cb.checked = false);
+
+  Object.entries(preset.settings).forEach(([category, columns]) => {
+    columns.forEach(column => {
+      const checkbox = document.querySelector(`input[name="${category}"][value="${column}"]`);
+      if (checkbox && !checkbox.disabled) checkbox.checked = true;
+    });
+  });
+
+  saveCurrentSettings();
+};
+
+function saveCurrentSettings() {
+  const settings = {};
+  const categories = ["환자/입원", "검사/바이탈", "진단/시술", "약물/투약", "임상시험"];
+
+  categories.forEach(category => {
+    const checkedBoxes = document.querySelectorAll(`input[name="${category}"]:checked:not([disabled])`);
+    settings[category] = {
+      selected_optional: Array.from(checkedBoxes).map(cb => cb.value)
+    };
+  });
+
+  fetch('http://127.0.0.1:8000/api/save_column_settings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(settings)
+  }).then(res => res.json()).then(data => {
+    if (data.success) console.log('자동 저장 완료');
+  });
+}
+
+document.addEventListener('change', function(e) {
+  if (e.target.type === 'checkbox' && e.target.name) {
+    saveCurrentSettings();
+  }
+});
+
+// 초기화
+document.getElementById('reset-settings-btn').onclick = function() {
+  if (confirm('모든 설정을 초기화하시겠습니까?')) {
+    document.querySelectorAll('input[type="checkbox"]:not([disabled])').forEach(cb => {
+      cb.checked = false;
+    });
+    document.getElementById('preset-selector').value = '';
+  }
+};
+
+// 페이지 로드 시 사용자 정의 프리셋 불러오기
+document.addEventListener('DOMContentLoaded', function() {
+  updatePresetSelector();
+});
+
+fetch('http://127.0.0.1:8000/api/get_column_settings')
+.then(res => res.json())
+.then(data => {
+  Object.entries(data).forEach(([category, config]) => {
+    const selectedCols = config.user_selected || [];
+    selectedCols.forEach(col => {
+      const checkbox = document.querySelector(`input[name="${category}"][value="${col}"]`);
+      if (checkbox && !checkbox.disabled) checkbox.checked = true;
+    });
+  });
+});
+
+
+// 기존 sendMessage 함수를 실제 AI 연결 버전으로 교체
+window.sendMessage = function() {
+  const chatInput = document.getElementById('tab-chatbot-input');
+  const chatMessages = document.getElementById('tab-chatbot-messages');
+  const message = chatInput.value.trim();
+  if (!message) return;
+
+  // 사용자 메시지 추가
+  const messageDiv = document.createElement('div');
+  messageDiv.className = 'chat-message user';
+  const contentDiv = document.createElement('div');
+  contentDiv.className = 'message-content';
+  contentDiv.textContent = message;
+  messageDiv.appendChild(contentDiv);
+  chatMessages.appendChild(messageDiv);
+
+  chatInput.value = '';
+
+  // 로딩 메시지
+  const loadingDiv = document.createElement('div');
+  loadingDiv.className = 'chat-message ai';
+  loadingDiv.id = 'loading-message';
+  const loadingContent = document.createElement('div');
+  loadingContent.className = 'message-content';
+  loadingContent.textContent = '분석 중입니다...';
+  loadingDiv.appendChild(loadingContent);
+  chatMessages.appendChild(loadingDiv);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+
+  // 현재 활성 탭과 컬럼 설정 정보도 함께 전송
+  const activeTab = document.querySelector('.ecrf-tab-btn.active').textContent;
+  const columnSettings = window.collectSettings();
+
+  fetch('http://127.0.0.1:8000/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      message: message,
+      chat_history: [],
+      active_tab: activeTab,
+      column_settings: columnSettings
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    const loading = document.getElementById('loading-message');
+    if (loading) loading.remove();
+
+    const aiDiv = document.createElement('div');
+    aiDiv.className = 'chat-message ai';
+    const aiContentDiv = document.createElement('div');
+    aiContentDiv.className = 'message-content';
+
+    // 텍스트 응답 추가
+    const textResponse = document.createElement('div');
+    textResponse.style.marginBottom = '15px';
+    textResponse.textContent = data.report_text || '응답을 처리할 수 없습니다.';
+    aiContentDiv.appendChild(textResponse);
+
+    // 🔥 수정: 결과를 버블 안에 표시
+    if (data.db_result && data.db_result.length > 0) {
+      const resultContainer = document.createElement('div');
+      resultContainer.style.cssText = `
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 15px;
+        margin-top: 15px;
+        max-height: 400px;
+        overflow-y: auto;
+      `;
+
+      // SQL 토글 버튼
+      if (data.sql) {
+        const sqlToggleBtn = document.createElement('button');
+        sqlToggleBtn.textContent = 'SQL 보기';
+        sqlToggleBtn.style.cssText = `
+          background: #3A86FF;
+          color: white;
+          border: none;
+          padding: 5px 12px;
+          border-radius: 5px;
+          font-size: 0.85em;
+          cursor: pointer;
+          margin-bottom: 10px;
+        `;
+
+        const sqlDiv = document.createElement('div');
+        sqlDiv.style.cssText = `
+          background: #2d3748;
+          color: #e2e8f0;
+          padding: 10px;
+          border-radius: 5px;
+          font-family: 'Courier New', monospace;
+          font-size: 0.85em;
+          margin-bottom: 15px;
+          display: none;
+          white-space: pre-wrap;
+          word-break: break-all;
+        `;
+        sqlDiv.textContent = data.sql;
+
+        let sqlVisible = false;
+        sqlToggleBtn.onclick = function() {
+          sqlVisible = !sqlVisible;
+          sqlDiv.style.display = sqlVisible ? 'block' : 'none';
+          sqlToggleBtn.textContent = sqlVisible ? 'SQL 숨기기' : 'SQL 보기';
+        };
+
+        resultContainer.appendChild(sqlToggleBtn);
+        resultContainer.appendChild(sqlDiv);
+      }
+
+      // 결과 테이블
+      const tableContainer = document.createElement('div');
+      tableContainer.style.cssText = `
+        background: white;
+        border-radius: 5px;
+        overflow: auto;
+        max-height: 300px;
+      `;
+
+      const table = document.createElement('table');
+      table.style.cssText = `
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.85em;
+      `;
+
+      // 컬럼명 매핑 (한글 표시용)
+      const COLUMN_KR_MAP = {
+        'SUBJECT_ID': '환자ID',
+        'HADM_ID': '입원ID',
+        'GENDER': '성별',
+        'ANCHOR_AGE': '나이',
+        'ADMITTIME': '입원일',
+        'ICD_CODE': '진단코드',
+        'SHORT_TITLE': '진단명',
+        'DRUG': '약품명',
+        'DRUG_TYPE': '약물분류',
+        'ITEMID': '검사항목',
+        'VALUE': '검사값',
+        'CHARTTIME': '검사시각'
+      };
+
+      // 테이블 헤더
+      if (data.columns && data.columns.length > 0) {
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        headerRow.style.backgroundColor = '#f8f9fa';
+
+        data.columns.forEach(col => {
+          const th = document.createElement('th');
+          th.style.cssText = `
+            padding: 8px 12px;
+            border: 1px solid #dee2e6;
+            font-weight: 600;
+            text-align: left;
+          `;
+          th.textContent = COLUMN_KR_MAP[col.toUpperCase()] || col;
+          headerRow.appendChild(th);
+        });
+
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+      }
+
+      // 테이블 바디
+      const tbody = document.createElement('tbody');
+      data.db_result.slice(0, 50).forEach((row, index) => { // 최대 50개 행만 표시
+        const tr = document.createElement('tr');
+        if (index % 2 === 1) tr.style.backgroundColor = '#f8f9fa';
+
+        data.columns.forEach(col => {
+          const td = document.createElement('td');
+          td.style.cssText = `
+            padding: 6px 12px;
+            border: 1px solid #dee2e6;
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          `;
+          td.textContent = row[col] || '';
+          td.title = row[col] || ''; // 툴팁으로 전체 내용 표시
+          tr.appendChild(td);
+        });
+
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+
+      tableContainer.appendChild(table);
+      resultContainer.appendChild(tableContainer);
+
+      // 결과 개수 표시
+      if (data.db_result.length > 50) {
+        const countInfo = document.createElement('div');
+        countInfo.style.cssText = `
+          margin-top: 10px;
+          font-size: 0.8em;
+          color: #6c757d;
+          text-align: center;
+        `;
+        countInfo.textContent = `총 ${data.db_result.length}개 결과 중 50개만 표시됩니다.`;
+        resultContainer.appendChild(countInfo);
+      } else {
+        const countInfo = document.createElement('div');
+        countInfo.style.cssText = `
+          margin-top: 10px;
+          font-size: 0.8em;
+          color: #6c757d;
+          text-align: center;
+        `;
+        countInfo.textContent = `총 ${data.db_result.length}개의 결과입니다.`;
+        resultContainer.appendChild(countInfo);
+      }
+
+      aiContentDiv.appendChild(resultContainer);
+    }
+
+    aiDiv.appendChild(aiContentDiv);
+    chatMessages.appendChild(aiDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  })
+  .catch(error => {
+    console.error('8000 포트 연결 실패:', error);
+
+    const loading = document.getElementById('loading-message');
+    if (loading) loading.remove();
+
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'chat-message ai';
+    const errorContent = document.createElement('div');
+    errorContent.className = 'message-content';
+    errorContent.textContent = '❌ 8000번 포트 서버에 연결할 수 없습니다. AI 서버(app.py)를 실행해주세요.';
+    errorDiv.appendChild(errorContent);
+    chatMessages.appendChild(errorDiv);
+
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  });
+};
+
+console.log('✅ 8000번 포트 연결 함수 준비 완료');
+
+
+// 탭 전환 기능
+document.addEventListener('DOMContentLoaded', function() {
+  const tabBtns = document.querySelectorAll('.ecrf-tab-btn');
+  const tabContents = document.querySelectorAll('.ecrf-tab-content');
+
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      // 모든 탭 숨기기
+      tabContents.forEach(content => content.style.display = 'none');
+
+      // 모든 버튼 비활성화
+      tabBtns.forEach(b => b.classList.remove('active'));
+
+      // 클릭한 탭 보이기
+      const targetTab = document.getElementById(btn.dataset.tab);
+      if (targetTab) {
+        targetTab.style.display = 'block';
+        btn.classList.add('active');
+      }
+    });
+  });
+
+  // 첫 번째 탭 활성화
+  if (tabBtns.length > 0) {
+    tabBtns[0].click();
+  }
+
+  // 저장된 설정 불러오기
+  loadSavedSettings();
+
+  // 챗봇 기능 - Enter 키 이벤트만 추가 (onclick은 HTML에서 처리)
+  const chatInput = document.getElementById('tab-chatbot-input');
+  if (chatInput) {
+    chatInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        sendMessage();
+      }
+    });
+  }
+});
+</script>

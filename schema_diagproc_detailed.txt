@@ -1,0 +1,219 @@
+# MIMIC-IV 진단/시술 관련 상세 가이드
+
+## 핵심 테이블 관계도
+```
+D_ICD_DIAGNOSES (진단코드 사전)
+    └── icd_code, icd_version → DIAGNOSES_ICD (환자 진단)
+
+D_ICD_PROCEDURES (시술코드 사전)
+    └── icd_code, icd_version → PROCEDURES_ICD (환자 시술)
+
+ADMISSIONS
+    ├── hadm_id → DIAGNOSES_ICD
+    ├── hadm_id → PROCEDURES_ICD
+    └── hadm_id → DRGCODES (DRG 코드)
+
+D_HCPCS (HCPCS 코드 사전)
+    └── code → HCPCSEVENTS (청구 이벤트)
+```
+
+## 테이블별 상세 정보
+
+### D_ICD_DIAGNOSES (진단코드 사전)
+**테이블 개요**
+입원 기간이 끝난 후 환자에게 할당된 ICD-9 또는 ICD-10 진단 코드에 대한 정의를 담고 있는 차원 테이블. 병원에서 진료 후 보험 청구 및 임상 분류 목적으로 사용됨.
+
+**테이블 연결 정보**
+- 연결 테이블: diagnoses_icd
+- 연결 기준: icd_code, icd_version
+
+**컬럼 정보**
+- icd_code: ICD 진단 코드 (CHAR(7))
+- icd_version: ICD 코드 버전 (INTEGER, 9: ICD-9-CM, 10: ICD-10-CM)
+- long_title: ICD 코드의 상세 질병 설명 (VARCHAR(255))
+
+**ICD-9 코드 범위별 분류**
+- 001–139: 감염성 및 기생충성 질환
+- 140–239: 신생물 (암 포함)
+- 240–279: 내분비, 영양 및 대사 질환 및 면역 질환
+- 280–289: 혈액 및 조혈기관 질환
+- 290–319: 정신질환
+- 320–389: 신경계 및 감각기관 질환
+- 390–459: 순환기계 질환
+- 460–519: 호흡기계 질환
+- 520–579: 소화기계 질환
+- 580–629: 비뇨기계 및 생식기계 질환
+- 630–679: 임신, 출산 및 산욕기 상태
+- 680–709: 피부 및 피하조직 질환
+- 710–739: 근골격계 및 결합조직 질환
+- 740–759: 선천성 이상
+- 760–779: 주산기 상태
+- 780–799: 일반적 증상, 이상소견
+- 800–999: 손상 및 중독 등 외인성 원인
+- V01–V91: 질병은 아니지만 특수한 건강 상태나 접종, 이력, 가족력 등
+- E000–E999: 손상, 중독, 사고의 원인을 설명하는 보조 코드
+
+**활용 팁**
+- 진단명 검색 시 반드시 이 테이블과 조인하여 long_title 확인
+- ICD-9와 ICD-10 구분 필요 (icd_version으로 구분)
+- 코드 범위로 질병 카테고리 분류 가능
+
+### DIAGNOSES_ICD (환자 진단)
+**테이블 개요**
+입원 중 발생한 진단 정보(질병 코드)를 기록한 테이블. 병원이 환자에게 청구한 진단명들을 ICD-9 또는 ICD-10 코드 체계로 저장함.
+
+**테이블 연결 정보**
+- 연결 테이블: admissions, d_icd_diagnoses
+- 연결 기준: hadm_id (입원정보), icd_code + icd_version (진단명)
+
+**컬럼 정보**
+- subject_id: 환자 고유 식별자 (INTEGER)
+- hadm_id: 입원 건 단위 식별자 (INTEGER)
+- seq_num: 진단의 순위 또는 우선순위 (INTEGER, 1~39)
+- icd_code: 질병을 나타내는 ICD 코드 (VARCHAR(7))
+- icd_version: 사용된 코드 체계 버전 (INTEGER, 9: ICD-9, 10: ICD-10)
+
+**활용 팁**
+- d_icd_diagnoses와 조인하여 진단명(long_title) 확인 필수
+- seq_num이 낮을수록 주요 진단 (1=주진단)
+- 한 입원에 여러 진단 코드 존재 가능
+
+### D_ICD_PROCEDURES (시술코드 사전)
+**테이블 개요**
+입원 종료 시 병원이 기록한 시술/처치 절차에 대해 ICD-9-PCS 또는 ICD-10-PCS 코드 기반 정의를 제공하는 차원 테이블. 주로 수술 및 중재적 처치 절차를 확인하거나 보험 청구 및 의료 자원 분석에 사용됨.
+
+**테이블 연결 정보**
+- 연결 테이블: procedures_icd
+- 연결 기준: icd_code, icd_version
+
+**컬럼 정보**
+- icd_code: ICD 시술 코드 (CHAR(7))
+- icd_version: ICD 코드 버전 (INTEGER, 9: ICD-9-PCS, 10: ICD-10-PCS)
+- long_title: 시술/처치의 상세 설명 (VARCHAR(255))
+
+**활용 팁**
+- 시술명 검색 시 반드시 이 테이블과 조인하여 long_title 확인
+- 수술과 비수술적 처치 모두 포함
+- ICD-9-PCS와 ICD-10-PCS 구분 필요
+
+### PROCEDURES_ICD (환자 시술)
+**테이블 개요**
+환자가 입원 중 받은 시술, 수술 등의 의료행위 정보를 담은 테이블. ICD 코드 체계를 사용해 각 시술/수술을 코드로 표현.
+
+**테이블 연결 정보**
+- 연결 테이블: admissions, d_icd_procedures
+- 연결 기준: hadm_id (입원정보), icd_code + icd_version (시술명)
+
+**컬럼 정보**
+- subject_id: 환자 고유 ID (patients 테이블과 연결)
+- hadm_id: 입원 단위 ID (admissions 테이블과 연결)
+- seq_num: 시술 순서 (같은 입원 내 여러 시술이 있을 경우 순서 부여)
+- chartdate: 시술 기록 날짜 (시술이 시행된 날짜 또는 기록된 날짜)
+- icd_code: 시술/수술에 해당하는 ICD 코드
+- icd_version: ICD 코드 버전 (9: ICD-9-CM, 10: ICD-10-PCS)
+
+**활용 팁**
+- icd_code는 코드만 존재하므로 실제 시술명은 d_icd_procedures 테이블에서 조인 필요
+- chartdate를 통해 시술 시점을 기준으로 진료 흐름 분석 가능
+- 한 명의 환자에게 한 번의 입원 동안 여러 시술이 존재할 수 있음
+
+### DRGCODES (진단군 분류)
+**테이블 개요**
+환자의 입원에 대해 병원이 보험사 또는 정부로부터 입원비용을 청구하기 위해 사용하는 DRG 코드를 기록한 테이블.
+
+**테이블 연결 정보**
+- 연결 테이블: patients, admissions
+- 연결 기준: subject_id, hadm_id
+
+**컬럼 정보**
+- subject_id: 환자 식별자 (INTEGER)
+- hadm_id: 입원 단위 식별자 (INTEGER)
+- drg_type: 사용된 DRG 체계의 종류 (VARCHAR(4), APR, HCFA)
+- drg_code: DRG 코드 자체 (VARCHAR(10), 1~998)
+- description: 해당 DRG 코드의 설명 텍스트 (VARCHAR(195))
+- drg_severity: 환자의 질병 중증도 (SMALLINT, NaN(HCFA) / 1~4(APR))
+- drg_mortality: 환자의 예상 사망 위험도 (SMALLINT, NaN(HCFA) / 1~4(APR))
+
+**DRG 코드 범위별 의미**
+- 001–039: 신경계 질환
+- 040–061: 눈 질환
+- 062–075: 귀/코/목 질환
+- 076–106: 호흡기계 질환
+- 107–130: 순환기계 질환
+- 131–139: 혈액 질환
+- 140–159: 소화기계 질환
+- 160–164: 간 및 담낭 질환
+- 165–208: 근골격계 질환
+- 209–238: 피부/피하 조직 질환
+- 239–256: 유방 및 내분비 질환
+- 257–278: 신장 및 비뇨기계 질환
+- 280–295: 여성 생식기 질환
+- 296–316: 분만 및 관련 질환
+- 317–335: 신생아 질환
+- 336–358: 기타 질환
+- 400–453: 정신 및 행동 장애
+- 454–479: 중독 및 재활
+- 480–500: HIV 관련 및 다계통 질환
+- 501–999: 시술 중심 DRG
+
+**활용 팁**
+- drg_severity와 drg_mortality로 환자 중증도 분석
+- 동일 진단이라도 중증도에 따라 다른 DRG 코드 할당
+- 보험 청구 및 의료비 분석에 핵심 지표
+
+### D_HCPCS (HCPCS 코드 사전)
+**테이블 개요**
+hcpcsevents 테이블에서 사용되는 CPT/HCPCS 코드의 정의 정보를 담고 있는 차원 테이블. 대부분은 병원 청구(billing) 목적으로 사용되는 CPT 코드이며, 코드에 대한 의미 설명을 제공.
+
+**HCPCS 구성**
+- Level I: CPT (Current Procedural Terminology) - 미국 의사협회에서 개발, 의료 시술, 처치, 수술, 상담 등에 사용됨
+- Level II: HCPCS 자체 코드 - CPT 코드로 커버되지 않는 비의료행위적 서비스/물품을 표현
+
+**테이블 연결 정보**
+- 연결 테이블: hcpcsevents
+- 연결 기준: code
+
+**컬럼 정보**
+- code: CPT/HCPCS 코드 (CHAR(5))
+- category: 코드 분류 번호 (SMALLINT)
+- long_description: 코드 상세 설명 (TEXT)
+- short_description: 코드 요약 설명 (VARCHAR(180))
+
+**활용 팁**
+- CPT 코드는 주로 의사 수행 시술/상담
+- HCPCS Level II는 의료기기, 약물, 운송 서비스 등
+- 청구 목적이므로 실제 의료행위와 정확히 일치하지 않을 수 있음
+
+### HCPCSEVENTS (청구 이벤트)
+**테이블 개요**
+환자의 입원 중 발생한 청구 이벤트를 기록한 테이블. HCPCS 코드 기반의 의료 행위를 담고 있으며, 주로 청구용 시술 코드(CPT 포함)가 저장됨.
+
+**테이블 연결 정보**
+- 연결 테이블: patients, admissions, d_hcpcs
+- 연결 기준: subject_id, hadm_id, hcpcs_cd
+
+**컬럼 정보**
+- subject_id: 환자 고유 ID (INTEGER)
+- hadm_id: 입원 기록 ID (INTEGER)
+- chartdate: 해당 청구 코드가 기록된 날짜 (DATE)
+- hcpcs_cd: HCPCS 의료 행위 코드 (CHAR(5))
+- seq_num: 진단의 순위 또는 우선순위 (INTEGER, 1~15)
+- short_description: 해당 HCPCS 코드의 간략 설명 (VARCHAR(180))
+
+**HCPCS 코드 분류**
+- 5자리 숫자 코드: 주로 의사가 수행한 진료, 시술 코드
+- 1자리 알파벳 + 4자리 숫자 코드: 의료 보조기기, 약물, 교통수단 등 보험 청구용
+  - A: 구급차, 병원 이송 서비스
+  - B: 영양보충제, 주입기기
+  - E: 내구성 의료기기(휠체어 등)
+  - J: 주사제 및 약물
+  - L: 보조기기/보철물
+  - P: 병리검사/검사실 서비스
+  - Q/R/S: 임시코드(보험사 시범서비스 등)
+  - T: 주정부 Medicaid 관련 코드
+  - V: 시각, 청각 관련 서비스
+
+**활용 팁**
+- d_hcpcs와 조인하여 상세 설명 확인
+- 청구 목적 코드이므로 실제 의료행위와 차이 있을 수 있음
+- chartdate로 청구 시점 분석 가능

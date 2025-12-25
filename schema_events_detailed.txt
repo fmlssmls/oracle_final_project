@@ -1,0 +1,221 @@
+# MIMIC-IV 검사/바이탈 관련 상세 가이드
+
+## 핵심 테이블 관계도
+```
+D_ITEMS (측정항목 사전)
+    ├── itemid → CHARTEVENTS (바이탈사인/간호기록)
+    ├── itemid → INPUTEVENTS (수액/약물투여)
+    ├── itemid → OUTPUTEVENTS (배출량)
+    └── itemid → PROCEDUREEVENTS (시술/처치)
+
+D_LABITEMS (검사항목 사전)
+    └── itemid → LABEVENTS (검사결과)
+
+PATIENTS
+    └── subject_id → MICROBIOLOGYEVENTS (미생물검사)
+```
+
+## 테이블별 상세 정보
+
+### D_ITEMS (측정항목 사전)
+**테이블 개요**
+MIMIC-IV에서 itemid에 해당하는 항목 코드의 메타 정보를 담고 있는 사전 테이블. chartevents, inputevents, outputevents 등 다양한 테이블에서 사용됨. 총 3,888개의 다양한 측정 항목 포함.
+
+**테이블 연결 정보**
+- 연결 테이블: chartevents, datetimeevents, procedureevents, inputevents, outputevents
+- 연결 기준: itemid
+
+**컬럼 정보**
+- itemid: 항목 고유 코드 (측정 항목 식별자)
+- label: 항목 이름 ("Heart Rate", "Glucose", "Urine Output" 등)
+- abbreviation: 약어 (간략 표기)
+- linksto: 연결되는 테이블 이름 (chartevents, outputevents 등)
+- category: 항목 카테고리 ("Vital Signs", "Labs", "Input", "Output" 등)
+- unitname: 측정 단위 (bpm, mmHg, °C, ml 등)
+- param_type: 값의 유형 (numeric, text, date, boolean 등)
+- lownormalvalue: 정상 하한값
+- highnormalvalue: 정상 상한값
+
+**주요 측정 항목 예시**
+- itemid 211: Heart Rate, chartevents, bpm, numeric
+- itemid 220045: Mean BP, chartevents, mmHg, numeric
+- itemid 220277: Temperature Celsius, chartevents, °C, numeric
+- itemid 226707: SpO2, chartevents, %, numeric
+
+**활용 팁**
+- itemid는 실제 측정값 테이블의 키 값
+- 자연어 질의 시 "심박수" → itemid = 211로 매핑 필요
+- linksto를 통해 어떤 테이블에서 사용되는지 구분
+- param_type이 numeric이면 valuenum 사용, text면 value 사용
+
+### CHARTEVENTS (환자 기록 이벤트)
+**테이블 개요**
+환자의 생체 신호(Vital Signs), 관찰 기록(Observation), 간호사 수기 입력 등이 시간 순으로 저장된 테이블. ICU 및 병동에서 매우 높은 빈도로 기록되며, 수억 건에 달하는 데이터 존재.
+
+**테이블 연결 정보**
+- 연결 테이블: patients, admissions, icustays, d_items
+- 연결 기준: subject_id, hadm_id, stay_id, itemid
+
+**컬럼 정보**
+- subject_id: 환자 고유 ID (patients와 연결)
+- hadm_id: 입원 단위 ID (admissions와 연결)
+- stay_id: ICU 체류 ID (icustays와 연결)
+- caregiver_id: 기록한 간호사 또는 의료진 ID
+- charttime: 측정 시간 (실제 측정 시각)
+- storetime: 저장 시간 (시스템에 저장된 시각)
+- itemid: 항목 코드 (d_items에서 label, 단위, 카테고리 등 확인)
+- value: 측정값(문자, 텍스트 형태 결과, 예: "HIGH", "NORMAL")
+- valuenum: 측정값(수치형, 숫자로 기록된 값, 예: 80, 37.5 등)
+- valueuom: 측정 단위 (예: bpm, °C, mmHg)
+- warning: 경고 플래그 (데이터 품질 문제 플래그)
+
+**활용 팁**
+- 시계열 분석: charttime을 기준으로 환자 상태 변화 추적
+- 반드시 d_items와 조인하여 itemid를 label로 해석
+- 수치형(valuenum)과 문자형(value) 구분하여 사용
+- 대용량 테이블이므로 itemid, 시간, 환자 필터로 선별 후 조회
+
+### D_LABITEMS (실험실 검사 항목 정의)
+**테이블 개요**
+병원에서 수행된 실험실 검사 항목에 대한 정의를 담고 있는 테이블
+
+**테이블 연결 정보**
+- 연결 테이블: labevents
+- 연결 기준: itemid
+
+**컬럼 정보**
+- itemid: 검사 항목 고유 식별자 (INTEGER, 50801~53152)
+- label: 검사 항목 이름 (VARCHAR(50))
+- fluid: 검사 채취 체액 종류 (Blood, Urine, Cerebrospinal Fluid 등)
+- category: 검사 유형의 상위 분류 (Blood Gas, Chemistry, Hematology)
+
+**활용 팁**
+- itemid를 기준으로 labevents와 JOIN하면 실제 검사 결과와 연결
+- fluid를 활용해 채취 부위별 검사 구분 가능
+- label 또는 category 기반으로 검사군 정의 후 요약 분석에 활용
+
+### LABEVENTS (검사결과)
+**테이블 개요**
+환자의 실험실 검사 결과를 시간 순서로 저장한 테이블
+
+**테이블 연결 정보**
+- 연결 테이블: patients, admissions, d_labitems
+- 연결 기준: subject_id, hadm_id, itemid
+
+**컬럼 정보**
+- LABEVENT_ID: 각 검사 결과의 고유 ID (PK)
+- SUBJECT_ID: 환자 ID (patients와 연결)
+- HADM_ID: 입원 ID (admissions와 연결)
+- SPECIMEN_ID: 동일 검체 식별자
+- ITEMID: 검사 항목 ID (d_labitems와 연결)
+- CHARTTIME: 검사 시행 시점
+- STORETIME: 데이터 저장 시점
+- VALUE: 결과 텍스트 값
+- VALUENUM: 수치형 결과
+- VALUEUOM: 단위
+- REF_RANGE_LOWER: 정상 하한치
+- REF_RANGE_UPPER: 정상 상한치
+- FLAG: 비정상 여부
+- PRIORITY: 검사 우선도
+- COMMENTS: 추가 설명
+
+**활용 팁**
+- d_labitems와 조인하여 검사명과 카테고리 확인
+- VALUENUM과 REF_RANGE로 정상/비정상 판정
+- CHARTTIME으로 시계열 분석 가능
+
+### MICROBIOLOGYEVENTS (미생물검사)
+**테이블 개요**
+병원 내에서 실시된 미생물 검사 결과를 저장하는 테이블. 혈액, 소변, 분변 등의 배양 분석을 통한 미생물 동정, 약제 내성, 배양 결과 등을 기록.
+
+**테이블 연결 정보**
+- 연결 테이블: patients, admissions
+- 연결 기준: subject_id, hadm_id
+
+**컬럼 정보**
+- subject_id: 환자 식별자
+- hadm_id: 입원 식별자
+- chartdate: 검사 요청 날짜
+- charttime: 검사 실행 시간
+- spec_itemid: 검체 종류
+- spec_type_desc: 검체 설명 (Blood, Urine, Sputum 등)
+- test_name: 검사명
+- org_name: 미생물 이름
+- quantity: 균 검출 수량
+- ab_name: 항생제 이름
+- interpretation: 내성 여부 (S=감수성, R=내성, I=중등도)
+- comments: 검사 주석
+
+**활용 팁**
+- org_name으로 검출된 균 종류 확인
+- ab_name과 interpretation으로 항생제 감수성 분석
+- spec_type_desc로 검체별 감염 패턴 분석
+
+### INPUTEVENTS (투여 이벤트)
+**테이블 개요**
+환자에게 투여된 약물, 수액, 영양 등의 입력 이벤트를 기록
+
+**테이블 연결 정보**
+- 연결 테이블: patients, admissions, icustays, d_items
+- 연결 기준: subject_id, hadm_id, stay_id, itemid
+
+**주요 컬럼**
+- SUBJECT_ID: 환자 고유 식별자
+- HADM_ID: 입원 고유 식별자
+- STAY_ID: ICU 체류 고유 식별자
+- STARTTIME: 투여 시작 시간
+- ENDTIME: 투여 종료 시간
+- ITEMID: 투여 항목 ID (d_items와 연결)
+- AMOUNT: 투여량
+- AMOUNTUOM: 투여량 단위
+- RATE: 투여 속도
+- RATEUOM: 투여 속도 단위
+- ORDERID: 처방 주문 ID
+
+**활용 팁**
+- d_items와 조인하여 투여 항목명 확인
+- STARTTIME과 ENDTIME으로 투여 기간 계산
+- RATE로 시간당 투여 속도 분석
+
+### OUTPUTEVENTS (배출 이벤트)
+**테이블 개요**
+환자로부터 배출된 체액, 소변, 배액 등의 출력 이벤트를 기록
+
+**테이블 연결 정보**
+- 연결 테이블: patients, admissions, icustays, d_items
+- 연결 기준: subject_id, hadm_id, stay_id, itemid
+
+**주요 컬럼**
+- SUBJECT_ID: 환자 고유 식별자
+- HADM_ID: 입원 고유 식별자
+- STAY_ID: ICU 체류 고유 식별자
+- CHARTTIME: 차트 기록 시간
+- ITEMID: 출력 항목 ID (d_items와 연결)
+- VALUE: 출력량 값
+- VALUEUOM: 출력량 단위
+
+**활용 팁**
+- 소변량, 배액량 등 체액 균형 분석에 활용
+- CHARTTIME으로 시간대별 출력량 변화 추적
+
+### PROCEDUREEVENTS (시술 이벤트)
+**테이블 개요**
+환자에게 시행된 의료 시술 및 처치를 기록
+
+**테이블 연결 정보**
+- 연결 테이블: patients, admissions, icustays, d_items
+- 연결 기준: subject_id, hadm_id, stay_id, itemid
+
+**주요 컬럼**
+- SUBJECT_ID: 환자 고유 식별자
+- STAY_ID: ICU 체류 고유 식별자
+- STARTTIME: 시술 시작 시간
+- ENDTIME: 시술 종료 시간
+- ITEMID: 시술 항목 ID (d_items와 연결)
+- LOCATION: 시술 위치
+- LOCATIONCATEGORY: 위치 카테고리
+
+**활용 팁**
+- d_items와 조인하여 시술명 확인
+- LOCATION으로 시술 부위 분석
+- STARTTIME과 ENDTIME으로 시술 소요 시간 계산

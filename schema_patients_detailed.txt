@@ -1,0 +1,170 @@
+# MIMIC-IV 환자/입원 관련 상세 가이드
+
+## MIMIC-IV 개요
+MIMIC-IV는 2008년부터 2019년까지의 입원환자 정보를 담고 있는 데이터셋입니다. 총 180,733명의 환자 정보를 포함하고 있으며, 전체 입원 건수는 431,231건입니다.
+
+## 핵심 테이블 관계도
+```
+PATIENTS (환자 기본정보)
+    ├── subject_id → ADMISSIONS (입원정보)
+    │                   ├── hadm_id → TRANSFERS (병동이동)
+    │                   ├── hadm_id → SERVICES (진료과변경)
+    │                   └── hadm_id → ICUSTAYS (ICU체류)
+    └── subject_id → OMR (외래 관찰기록)
+```
+
+## 테이블별 상세 정보
+
+### PATIENTS (환자 기본정보)
+**테이블 개요**
+환자 인구통계 정보 및 사망 정보를 담고 있으며, MIMIC-IV 데이터 전체에서 주요 연결 노드 역할하는 테이블
+
+**컬럼 정보**
+- subject_id: 환자 고유 식별자 (NUMBER, PK)
+- gender: 환자 성별 (VARCHAR2(1), M, F 등)
+- anchor_age: 비식별화 기준 시점 나이 (NUMBER, 90세 이상은 91로 통합)
+- anchor_year: 비식별화 기준 연도 (NUMBER, 2100–2200 범위)
+- anchor_year_group: 연도 범위 그룹 (VARCHAR2(255), 예: 2011–2013)
+- dod: 사망 일자 (VARCHAR2(20), de-identified, 1년 이내)
+
+**활용 팁**
+- 모든 테이블과 subject_id로 연결되는 중심 테이블
+- anchor_age는 실제 나이가 아닌 비식별화된 나이
+- 90세 이상 환자는 모두 91세로 표시됨
+
+### ADMISSIONS (입원정보)
+**테이블 개요**
+환자의 병원 입원 정보를 담고 있는 핵심 테이블로, 입원/퇴원 시각, 사망 시각, 입원 경로, 퇴원 경로, 보험 정보, 인종, 결혼 여부, 사망 여부 등 다양한 정보 포함
+
+**테이블 연결 정보**
+- 연결 테이블: patients, icustays, diagnoses_icd, poe, microbiologyevents 등
+- 연결 기준: subject_id → patients.subject_id (환자 정보 연결), hadm_id → 입원 단위 기준으로 ICU stay, 진단, 처방, 검사 등과 연결
+
+**컬럼 정보**
+- subject_id: 환자 ID (INTEGER)
+- hadm_id: 입원 ID (INTEGER, 2000000~2999999)
+- admittime: 입원 시각 (TIMESTAMP)
+- dischtime: 퇴원 시각 (TIMESTAMP)
+- deathtime: 병원 내 사망 시각 (TIMESTAMP)
+- admission_type: 입원 유형 (VARCHAR(40), ELECTIVE, URGENT, EW EMER., DIRECT EMER. 등)
+- admission_location: 입원 경로 (VARCHAR(60), EMERGENCY ROOM, CLINIC REFERRAL 등)
+- discharge_location: 퇴원 후 이동지 (VARCHAR(60), HOME, DIED, REHAB 등)
+- insurance: 보험 유형 (VARCHAR(255), Medicare, Medicaid, Other)
+- language: 언어 (VARCHAR(10))
+- marital_status: 혼인 여부 (VARCHAR(30))
+- race: 인종 (VARCHAR(80))
+- edregtime: 응급실 등록 시각 (TIMESTAMP)
+- edouttime: 응급실 퇴실 시각 (TIMESTAMP)
+- hospital_expire_flag: 병원 내 사망 여부 (SMALLINT, 1=사망, 0=생존)
+
+**입원 유형 (admission_type) 분류**
+- 응급 그룹: DIRECT EMER. (직접 응급실 이송), EW EMER. (응급 병동 입원)
+- 예약 그룹: ELECTIVE (예약된 입원), URGENT (긴급하지만 예약 가능)
+- 관찰 그룹: OBSERVATION ADMIT (모니터링 목적), EU OBSERVATION (응급실→관찰병동)
+
+**활용 팁**
+- hadm_id는 입원 단위의 핵심 식별자로 모든 입원 관련 테이블과 연결
+- hospital_expire_flag로 병원 내 사망 여부 즉시 확인 가능
+- admittime과 dischtime으로 재원기간 계산 가능
+
+### TRANSFERS (병동이동)
+**테이블 개요**
+환자가 병원 내에서 어떤 병동/ICU로 이동했는지를 시간 순으로 기록한 테이블
+
+**테이블 연결 정보**
+- 연결 테이블: patients, admissions
+- 연결 기준: subject_id, hadm_id
+
+**컬럼 정보**
+- subject_id: 환자 고유 ID (patients와 연결)
+- hadm_id: 입원 단위 ID (admissions와 연결)
+- transfer_id: 병동 이동 기록의 고유 ID (기본키)
+- eventtype: 이동의 종류 (admit, transfer, discharge 등)
+- careunit: 병동 또는 중환자실 이름
+- intime: 병동 입실 시간
+- outtime: 병동 퇴실 시간
+
+**주요 병동 (careunit) 예시**
+- 중환자실: MICU (내과중환자실), SICU (외과중환자실), CCU (관상동맥중환자실)
+- 일반병동: Med/Surg (내외과 혼합), Medicine (내과), Surgery (외과)
+- 특수병동: Emergency Department (응급실), PACU (회복실)
+
+**활용 팁**
+- intime과 outtime으로 각 병동 체류 시간 계산 가능
+- eventtype으로 입원/전실/퇴원 구분 가능
+- 병동 흐름 분석: 응급실 → 일반병동 → ICU → 퇴원 시퀀스 추적
+
+### ICUSTAYS (ICU 체류)
+**테이블 개요**
+ICU(중환자실) 체류 정보를 stay_id 기준으로 관리하는 테이블
+
+**테이블 연결 정보**
+- 연결 테이블: patients, admissions, chartevents, inputevents, outputevents 등
+- 연결 기준: subject_id, hadm_id, stay_id (ICU 내 모든 이벤트와 연결)
+
+**컬럼 정보**
+- subject_id: 환자 ID
+- hadm_id: 입원 ID
+- stay_id: ICU 체류 고유 ID (기본키)
+- first_careunit: 첫 입실한 ICU 유형(MICU, SICU 등)
+- last_careunit: 마지막 퇴실 ICU 유형
+- intime: ICU 입실 시각
+- outtime: ICU 퇴실 시각
+- los: ICU 체류 기간(일 단위, 소수점 가능)
+
+**활용 팁**
+- stay_id는 ICU 내 모든 측정/처치 이벤트의 연결 기준
+- los로 ICU 재원기간 즉시 확인 가능
+- first/last_careunit으로 ICU 이동 패턴 분석
+
+### SERVICES (진료과 변경)
+**테이블 개요**
+환자가 입원 중 받은 진료과(service)의 변동 기록을 담은 테이블
+
+**테이블 연결 정보**
+- 연결 테이블: patients, admissions
+- 연결 기준: subject_id, hadm_id
+
+**컬럼 정보**
+- subject_id: 환자 고유 ID
+- hadm_id: 입원 단위 ID
+- transfertime: 진료과 변경 시간
+- prev_service: 이전 진료과 (이동 전)
+- curr_service: 현재 진료과 (이동 후)
+
+**주요 진료과 코드**
+- 내과계: MED (내과), CMED (심장내과), NMED (신경과), OMED (종양내과)
+- 외과계: SURG (일반외과), NSURG (신경외과), CSURG (심장외과), ORTHO (정형외과)
+- 특수과: ENT (이비인후과), EYE (안과), PSYCH (정신건강의학과)
+
+**활용 팁**
+- transfertime으로 진료과별 담당 기간 계산 가능
+- 진료 흐름: 응급실(EM) → 내과(MED) → 외과(SUR) 등 분석
+- 진료과 약어이므로 자연어 질의 시 매핑 필요
+
+### OMR (Online Medical Record)
+**테이블 개요**
+전자의무기록(EHR)에 기록된 다양한 관찰 정보를 저장하는 테이블로, 특히 외래 환자의 혈압, 체중, 키, BMI 등 신체 계측 정보가 주요하게 포함
+
+**테이블 연결 정보**
+- 연결 테이블: 없음 (직접적인 외래키 관계 없음)
+- 간접 연결: subject_id를 기준으로 patients, admissions 등과 조인 가능
+
+**컬럼 정보**
+- subject_id: 환자 식별자 (INTEGER)
+- chartdate: 관찰 기록 날짜 (DATE)
+- seq_num: 동일 날짜의 관찰 순서 (INTEGER)
+- result_name: 관찰 항목명 (VARCHAR(100))
+- result_value: 관찰 결과 값 (TEXT)
+
+**주요 측정 항목**
+- Blood Pressure: 일반적인 혈압 측정 (33.70%)
+- Weight (Lbs): 체중 (29.34%)
+- BMI (kg/m2): 체질량지수 (25.81%)
+- Height (Inches): 신장
+- Blood Pressure Sitting/Standing: 기립성 저혈압 검사용
+
+**활용 팁**
+- 외래 환자의 장기 추적 관찰에 유용
+- result_name으로 측정 항목 필터링 후 result_value에서 값 추출
+- 혈압 자세별 측정으로 기립성 저혈압 진단 가능
