@@ -15,12 +15,12 @@ import time
 from datetime import datetime
 # === 평가지표 관련 import 추가 ===
 # import tiktoken  # OpenAI 토큰 계산
-from evaluation_module import (
-    evaluate_and_save, get_query_stats, sql_evaluator, estimate_token_usage,
-    record_token_usage, get_token_statistics, token_callback,
-    sql_result_cache, run_sql_query_cached
-)
-from evaluation_module import start_multiturn_session, get_individual_evaluation_result, evaluate_new_rag_metrics, evaluate_langsmith_rag_metrics
+# from evaluation_module import (
+#     evaluate_and_save, get_query_stats, sql_evaluator, estimate_token_usage,
+#     record_token_usage, get_token_statistics, token_callback,
+#     sql_result_cache, run_sql_query_cached
+# )
+# from evaluation_module import start_multiturn_session, get_individual_evaluation_result, evaluate_new_rag_metrics, evaluate_langsmith_rag_metrics
 from column_manager import ColumnManager, column_manager
 
 
@@ -1393,3 +1393,4 @@ def end_session():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000, debug=True)
+
