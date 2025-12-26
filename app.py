@@ -806,6 +806,8 @@ def get_db_connection():
 
 @app.route('/login', methods=['POST'])
 def login():
+    print("===== LOGIN REQUEST START =====")
+    print(f"Request data: {request.json}")
     data = request.json
     user_id = data.get('user_id')
     user_pw = data.get('user_pw')
@@ -1395,6 +1397,7 @@ def index():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000, debug=True)
+
 
 
 
