@@ -98,11 +98,13 @@ def load_schema_and_guide(intent):
 langsmith_tracer = LangChainTracer(project_name="model5")
 llm = ChatOpenAI(model="gpt-4o-mini", temperature=0, api_key=OPENAI_API_KEY,
                 callbacks=[langsmith_tracer])
-embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-vectordb = Chroma(
-    persist_directory="./chroma_db",
-    embedding_function=embedding
-)
+# 수정 후:
+# embedding = HuggingFaceEmbeddings(model_name="intfloat/multilingual-e5-large")
+# vectordb = Chroma(
+#     persist_directory="./chroma_db",
+#     embedding_function=embedding
+# )
+vectordb = None  # RAG 기능 임시 비활성화
 
 prompt = PromptTemplate(
     input_variables=["context", "guide", "chat_history", "question", "column_instruction"],
@@ -163,8 +165,9 @@ def extract_faq_from_context(context):
         faq_list.append("Q:" + q.strip() + "\nA:" + a.strip())
     return faq_list
 
+# 수정 후:
 def hybrid_search(query, vectordb, keyword_corpus, top_k=3):
-    vector_results = vectordb.similarity_search(query, k=top_k*2)
+    vector_results = vectordb.similarity_search(query, k=top_k*2) if vectordb else []
     keyword_hits = []
     for context in keyword_corpus:
         if any(w in context for w in query.split() if len(w) > 1):
@@ -392,11 +395,10 @@ def chat():
     # 🔥 컬럼 강제 지시문 생성 (새로 추가)
     column_instruction = column_manager.generate_column_instruction(intent)
 
-    docs = vectordb.similarity_search(user_msg, k=3)
-
-    # FAQ는 VectorDB 검색 결과에서 추출 (기존 형식 유지)
-    retrieved_context = "\n\n".join([d.page_content if hasattr(d, 'page_content') else d for d in docs])
-    faq_corpus = extract_faq_from_context(retrieved_context)
+    # 수정 후:
+    docs = vectordb.similarity_search(user_msg, k=3) if vectordb else []
+    retrieved_context = "\n\n".join([d.page_content if hasattr(d, 'page_content') else d for d in docs]) if docs else ""
+    faq_corpus = extract_faq_from_context(retrieved_context) if retrieved_context else []
 
     # === LLM 전달 정보 디버깅 추가 (기존 형식 유지) ===
     # print(f"\n{'=' * 60}")
@@ -1385,4 +1387,5 @@ def save_column_settings():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000, debug=True)
+
 
