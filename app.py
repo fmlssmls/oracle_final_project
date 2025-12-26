@@ -1385,7 +1385,16 @@ def save_column_settings():
 
 # === 평가 엔드포인트 끝 ===
 
+@app.route('/')
+def index():
+    return jsonify({
+        "status": "online",
+        "message": "GPTify API Server is running!",
+        "endpoints": ["/chat", "/login", "/signup"]
+    })
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000, debug=True)
+
 
 
