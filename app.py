@@ -98,7 +98,7 @@ def load_schema_and_guide(intent):
 langsmith_tracer = LangChainTracer(project_name="model5")
 llm = ChatOpenAI(model="gpt-4o-mini", temperature=0, api_key=OPENAI_API_KEY,
                 callbacks=[langsmith_tracer])
-embedding = HuggingFaceEmbeddings(model_name="intfloat/multilingual-e5-large")
+embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 vectordb = Chroma(
     persist_directory="./chroma_db",
     embedding_function=embedding
@@ -1385,3 +1385,4 @@ def save_column_settings():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000, debug=True)
+
