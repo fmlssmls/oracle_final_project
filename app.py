@@ -97,7 +97,7 @@ def load_schema_and_guide(intent):
 
 langsmith_tracer = LangChainTracer(project_name="model5")
 llm = ChatOpenAI(model="gpt-4o-mini", temperature=0, api_key=OPENAI_API_KEY,
-                callbacks=[token_callback, langsmith_tracer])
+                callbacks=[langsmith_tracer])
 embedding = HuggingFaceEmbeddings(model_name="intfloat/multilingual-e5-large")
 vectordb = Chroma(
     persist_directory="./chroma_db",
@@ -231,8 +231,9 @@ def run_sql_query(sql):
     if not sql.lower().startswith("select"):
         return {"success": False, "error": "SELECT 쿼리만 실행 가능합니다."}
 
-    dsn = cx_Oracle.makedsn(ORACLE_HOST, ORACLE_PORT, service_name=ORACLE_SERVICE)
-    conn = cx_Oracle.connect(ORACLE_USER, ORACLE_PW, dsn)
+    conn = get_db_connection()
+    if not conn:
+        return {"success": False, "error": "데이터베이스 연결 실패"}
     cursor = conn.cursor()
     try:
         # print(f"🔍 [DEBUG] Oracle 실행 직전 SQL: '{sql}'")
@@ -470,18 +471,18 @@ def chat():
     # print(f"  └ 최종 컨텍스트: {len(final_context)}자")  # 대폭 감소!
     # print(f"  └ 사용자 질문: {len(user_msg)}자")
 
-    # === [TOKEN] 레벨: 토큰 예측 ===
-    # print(f"\n🔍 [TOKEN] === 토큰 사용량 예측 ===")
-    total_estimated_tokens = estimate_token_usage(final_context + "\n" + user_msg)
-    estimated_tokens = {
-        'context_tokens': estimate_token_usage(final_context),
-        'question_tokens': estimate_token_usage(user_msg),
-        'total_prompt_tokens': total_estimated_tokens
-    }
-    context_tokens = estimated_tokens['context_tokens']
-    question_tokens = estimated_tokens['question_tokens']
-    total_estimated = estimated_tokens['total_prompt_tokens']
-    # print(f"  └ 예상: 컨텍스트 {context_tokens} + 질문 {question_tokens} = 총 {total_estimated} 토큰")
+    # # === [TOKEN] 레벨: 토큰 예측 ===
+    # # print(f"\n🔍 [TOKEN] === 토큰 사용량 예측 ===")
+    # total_estimated_tokens = estimate_token_usage(final_context + "\n" + user_msg)
+    # estimated_tokens = {
+    #     'context_tokens': estimate_token_usage(final_context),
+    #     'question_tokens': estimate_token_usage(user_msg),
+    #     'total_prompt_tokens': total_estimated_tokens
+    # }
+    # context_tokens = estimated_tokens['context_tokens']
+    # question_tokens = estimated_tokens['question_tokens']
+    # total_estimated = estimated_tokens['total_prompt_tokens']
+    # # print(f"  └ 예상: 컨텍스트 {context_tokens} + 질문 {question_tokens} = 총 {total_estimated} 토큰")
 
     column_instruction = column_manager.generate_column_instruction(intent)
 
@@ -507,33 +508,33 @@ def chat():
     print("\n", f"🔍 [LLM] === LLM 처리 시작 ===")
     debugger.log("LLM 호출 시작", "START")
     try:
-        llm_answer = llm.invoke(prompt_text, config={"callbacks": [token_callback, langsmith_tracer]}).content
+        llm_answer = llm.invoke(prompt_text, config={"callbacks": [langsmith_tracer]}).content
         debugger.log("LLM 호출 완료", "SUCCESS")
         print(f"  └ LLM 응답 완료")
 
-        # 토큰 사용량 기록
-        token_record = record_token_usage(
-            user_question=user_msg,
-            generated_sql="",  # SQL 추출 전이므로 빈 값
-            response_text=llm_answer,
-            estimated_tokens=estimated_tokens,
-            actual_usage=None,  # LangChain은 실제 토큰 정보 제공 안함
-            execution_success=False  # 아직 SQL 실행 전
-        )
-        # print(f"🔍 [TOKEN] 토큰 사용량 기록 완료")
+        # # 토큰 사용량 기록
+        # token_record = record_token_usage(
+        #     user_question=user_msg,
+        #     generated_sql="",  # SQL 추출 전이므로 빈 값
+        #     response_text=llm_answer,
+        #     estimated_tokens=estimated_tokens,
+        #     actual_usage=None,  # LangChain은 실제 토큰 정보 제공 안함
+        #     execution_success=False  # 아직 SQL 실행 전
+        # )
+        # # print(f"🔍 [TOKEN] 토큰 사용량 기록 완료")
 
     except Exception as llm_error:
         print(f"❌ [TOKEN] LLM 호출 실패: {llm_error}")
 
-        # LLM 실패 시에도 토큰 기록
-        record_token_usage(
-            user_question=user_msg,
-            generated_sql="",
-            response_text="",
-            estimated_tokens=estimated_tokens,
-            actual_usage=None,
-            execution_success=False
-        )
+        # # LLM 실패 시에도 토큰 기록
+        # record_token_usage(
+        #     user_question=user_msg,
+        #     generated_sql="",
+        #     response_text="",
+        #     estimated_tokens=estimated_tokens,
+        #     actual_usage=None,
+        #     execution_success=False
+        # )
 
         return jsonify({
             "sql": "",
@@ -550,17 +551,17 @@ def chat():
     # === SQL 추출 후 토큰 기록 업데이트 ===
     # print(f"🔍 [TOKEN] SQL 추출 완료: {sql[:50] if sql else 'None'}...")
 
-    # 토큰 기록 업데이트 (SQL 포함)
-    if sql:
-        updated_token_record = record_token_usage(
-            user_question=user_msg,
-            generated_sql=sql,
-            response_text=llm_answer,
-            estimated_tokens=estimated_tokens,
-            actual_usage=None,
-            execution_success=False  # 아직 실행 전
-        )
-    # === 토큰 기록 업데이트 끝 ===
+    # # 토큰 기록 업데이트 (SQL 포함)
+    # if sql:
+    #     updated_token_record = record_token_usage(
+    #         user_question=user_msg,
+    #         generated_sql=sql,
+    #         response_text=llm_answer,
+    #         estimated_tokens=estimated_tokens,
+    #         actual_usage=None,
+    #         execution_success=False  # 아직 실행 전
+    #     )
+    # # === 토큰 기록 업데이트 끝 ===
 
     if not sql:
         # 🔥 디버깅 코드 추가
@@ -656,89 +657,89 @@ def chat():
         else:
             report_text = "SQL 생성에 실패했습니다. 질문을 다시 명확히 해주세요."
 
-    # 🔥 RAG 평가 (성공/실패 무관하게 수행)
-    if context and context.strip():
-        try:
-            # 도메인 특화 RAG 평가
-            domain_rag = evaluate_new_rag_metrics(user_msg, context, sql)
-            # LangSmith 표준 RAG 평가
-            langsmith_rag = evaluate_langsmith_rag_metrics(user_msg, context, sql)
-            # 두 평가 결과 통합
-            rag_evaluation = {**domain_rag, **langsmith_rag}
+    # # 🔥 RAG 평가 (성공/실패 무관하게 수행)
+    # if context and context.strip():
+    #     try:
+    #         # 도메인 특화 RAG 평가
+    #         domain_rag = evaluate_new_rag_metrics(user_msg, context, sql)
+    #         # LangSmith 표준 RAG 평가
+    #         langsmith_rag = evaluate_langsmith_rag_metrics(user_msg, context, sql)
+    #         # 두 평가 결과 통합
+    #         rag_evaluation = {**domain_rag, **langsmith_rag}
+    #
+    #         print(f"🔍 [RAG] === RAG 평가 완료 (도메인 + LangSmith) ===")
+    #         # print(f"  └ 도메인 메트릭: {list(domain_rag.keys())}")
+    #         # print(f"  └ LangSmith 메트릭: {list(langsmith_rag.keys())}")
+    #     except Exception as e:
+    #         print(f"⚠️ RAG 평가 실패: {e}")
+    #         rag_evaluation = {}
+    #
+    # # RAG 평가 결과를 sql_evaluator에 저장
+    # sql_evaluator.last_rag_evaluation = rag_evaluation
+    #
+    # # 🔥 토큰 정보 추출
+    # # 🔥 토큰 정보 추출 - 강화된 방식
+    # token_info = None
+    # print(f"🔍 [APP_TOKEN] 토큰 추출 시도...")
+    #
+    # if hasattr(token_callback, 'last_token_usage') and token_callback.last_token_usage:
+    #     token_info = token_callback.last_token_usage
+    #     print(f"✅ [APP_TOKEN] 콜백에서 토큰 추출: {token_info}")
+    # else:
+    #     print(f"❌ [APP_TOKEN] 콜백 토큰 없음, LangSmith에서 추출 시도...")
+    #     # LangSmith API로 직접 조회 (대안)
+    #     try:
+    #         from langsmith import Client
+    #         client = Client()
+    #         # 최근 실행의 토큰 정보 조회
+    #         print(f"⚠️ [APP_TOKEN] LangSmith 직접 조회는 구현 필요")
+    #     except:
+    #         pass
 
-            print(f"🔍 [RAG] === RAG 평가 완료 (도메인 + LangSmith) ===")
-            # print(f"  └ 도메인 메트릭: {list(domain_rag.keys())}")
-            # print(f"  └ LangSmith 메트릭: {list(langsmith_rag.keys())}")
-        except Exception as e:
-            print(f"⚠️ RAG 평가 실패: {e}")
-            rag_evaluation = {}
-
-    # RAG 평가 결과를 sql_evaluator에 저장
-    sql_evaluator.last_rag_evaluation = rag_evaluation
-
-    # 🔥 토큰 정보 추출
-    # 🔥 토큰 정보 추출 - 강화된 방식
-    token_info = None
-    print(f"🔍 [APP_TOKEN] 토큰 추출 시도...")
-
-    if hasattr(token_callback, 'last_token_usage') and token_callback.last_token_usage:
-        token_info = token_callback.last_token_usage
-        print(f"✅ [APP_TOKEN] 콜백에서 토큰 추출: {token_info}")
-    else:
-        print(f"❌ [APP_TOKEN] 콜백 토큰 없음, LangSmith에서 추출 시도...")
-        # LangSmith API로 직접 조회 (대안)
-        try:
-            from langsmith import Client
-            client = Client()
-            # 최근 실행의 토큰 정보 조회
-            print(f"⚠️ [APP_TOKEN] LangSmith 직접 조회는 구현 필요")
-        except:
-            pass
-
-    # 🔥 target_sql_result 준비
-    target_sql_result = []
-    if gold_sql and gold_sql.strip():
-        try:
-            target_db_result = run_sql_query(gold_sql)
-            if target_db_result["success"]:
-                target_sql_result = target_db_result.get("result", [])
-        except Exception as e:
-            print(f"⚠️ 정답 SQL 실행 실패: {e}")
-
-    # 🔥 🔥 🔥 핵심: 한 번만 evaluate_and_save 호출
-    try:
-        print(f"🔍 [APP_DEBUG] evaluate_and_save 통합 호출")
-        # print(f"  └ exec_success: {exec_success}")
-        # print(f"  └ result_count: {result_count}")
-        # print(f"  └ error: {error}")
-
-        eval_result = evaluate_and_save(
-            user_question=user_msg,
-            generated_sql=sql,
-            gold_sql=gold_sql if (gold_sql and isinstance(gold_sql, str) and gold_sql.strip()) else None,
-            exec_success=exec_success,  # 🔥 성공/실패 상태
-            result_count=result_count,  # 🔥 결과 행 수
-            error=error,  # 🔥 오류 정보 (있으면)
-            context=context,
-            actual_usage=token_info,
-            generated_sql_result=all_rows,  # 🔥 생성 SQL 결과
-            target_sql_result=target_sql_result,  # 🔥 정답 SQL 결과
-            rag_evaluation=rag_evaluation,
-            turn_start_time=turn_start_time
-            # skip_multiturn 파라미터 제거! 더이상 필요없음
-        )
-
-        print(f"🔍 [APP_DEBUG] evaluate_and_save 통합 호출 완료")
-
-    except Exception as e:
-        print(f"❌ [APP_DEBUG] evaluate_and_save 실패: {e}")
-        import traceback
-        traceback.print_exc()
-        eval_result = None
-
-    # 🔥 디버깅 코드
-    debugger.log("전체 처리 완료", "SUCCESS")
-
+    # # 🔥 target_sql_result 준비
+    # target_sql_result = []
+    # if gold_sql and gold_sql.strip():
+    #     try:
+    #         target_db_result = run_sql_query(gold_sql)
+    #         if target_db_result["success"]:
+    #             target_sql_result = target_db_result.get("result", [])
+    #     except Exception as e:
+    #         print(f"⚠️ 정답 SQL 실행 실패: {e}")
+    #
+    # # 🔥 🔥 🔥 핵심: 한 번만 evaluate_and_save 호출
+    # try:
+    #     print(f"🔍 [APP_DEBUG] evaluate_and_save 통합 호출")
+    #     # print(f"  └ exec_success: {exec_success}")
+    #     # print(f"  └ result_count: {result_count}")
+    #     # print(f"  └ error: {error}")
+    #
+    #     eval_result = evaluate_and_save(
+    #         user_question=user_msg,
+    #         generated_sql=sql,
+    #         gold_sql=gold_sql if (gold_sql and isinstance(gold_sql, str) and gold_sql.strip()) else None,
+    #         exec_success=exec_success,  # 🔥 성공/실패 상태
+    #         result_count=result_count,  # 🔥 결과 행 수
+    #         error=error,  # 🔥 오류 정보 (있으면)
+    #         context=context,
+    #         actual_usage=token_info,
+    #         generated_sql_result=all_rows,  # 🔥 생성 SQL 결과
+    #         target_sql_result=target_sql_result,  # 🔥 정답 SQL 결과
+    #         rag_evaluation=rag_evaluation,
+    #         turn_start_time=turn_start_time
+    #         # skip_multiturn 파라미터 제거! 더이상 필요없음
+    #     )
+    #
+    #     print(f"🔍 [APP_DEBUG] evaluate_and_save 통합 호출 완료")
+    #
+    # except Exception as e:
+    #     print(f"❌ [APP_DEBUG] evaluate_and_save 실패: {e}")
+    #     import traceback
+    #     traceback.print_exc()
+    #     eval_result = None
+    #
+    # # 🔥 디버깅 코드
+    # debugger.log("전체 처리 완료", "SUCCESS")
+    #
     # 최종 응답 반환
     return jsonify({
         "sql": sql,
@@ -747,15 +748,6 @@ def chat():
         "db_error": error,  # 🔥 실패 시 오류 메시지
         "report_text": report_text,
         "columns": columns,
-        "evaluation": {
-            "individual_result": get_individual_evaluation_result(),
-            "basic_metrics": eval_result,
-            "session_status": {
-                "has_session": bool(
-                    sql_evaluator.multiturn_manager and sql_evaluator.multiturn_manager.current_session),
-                "session_id": sql_evaluator.multiturn_manager.current_session.session_id if sql_evaluator.multiturn_manager and sql_evaluator.multiturn_manager.current_session else None
-            }
-        }
     })
 
 @app.route('/download_csv', methods=['POST'])
@@ -1042,355 +1034,354 @@ def save_column_settings():
 # === column_manager 관련 코드 추가 ===
 
 
-# === 평가 관련 엔드포인트 추가 ===
-@app.route('/individual_evaluation', methods=['POST'])
-def individual_evaluation():
-    try:
-        data = request.json or {}
-        provided_gold_sql = data.get('gold_sql', '')
-        user_question = data.get('user_question', '')
-
-        # 멀티턴 관리자 확인
-        if not hasattr(sql_evaluator, 'multiturn_manager') or not sql_evaluator.multiturn_manager:
-            return jsonify({
-                "success": False,
-                "error": "멀티턴 평가 관리자가 초기화되지 않았습니다."
-            })
-
-        manager = sql_evaluator.multiturn_manager
-
-        # 🔥 현재 세션 상태 디버깅
-        print(f"🔍 [DEBUG] 개별평가 요청 - 현재 세션: {manager.current_session}")
-        if manager.current_session:
-            print(f"🔍 [DEBUG] 세션 ID: {manager.current_session.session_id}")
-            print(f"🔍 [DEBUG] 세션 상태: {manager.current_session.status}")
-            print(f"🔍 [DEBUG] 턴 수: {len(manager.current_session.turns)}")
-
-        # 결과 생성 (없으면 강제 생성)
-        if manager.current_session:
-            result_text = manager.generate_multiturn_evaluation_report()
-        else:
-            # 파일에서 최근 세션 로드해서 결과 생성
-            try:
-                if os.path.exists(manager.session_file):
-                    with open(manager.session_file, 'r', encoding='utf-8') as f:
-                        data = json.load(f)
-                    sessions = data.get('multiturn_sessions', [])
-                    if sessions:
-                        # 가장 최근 세션으로 결과 생성
-                        latest_session = sessions[-1]
-                        from evaluation_module import MultiTurnSession
-                        session_obj = MultiTurnSession(latest_session['session_id'], latest_session['max_turns'])
-                        session_obj.turns = latest_session['turns']
-                        session_obj.status = latest_session['status']
-                        result_text = manager._format_individual_evaluation_report(session_obj)
-                    else:
-                        result_text = "📋 평가할 세션이 없습니다. 새 세션을 시작하세요."
-                else:
-                    result_text = "📋 세션 파일이 없습니다. 새 세션을 시작하세요."
-            except Exception as file_error:
-                result_text = f"📋 세션 파일 로드 실패: {file_error}"
-
-        # 결과가 여전히 비어있으면 기본 메시지
-        if not result_text or result_text.strip() == "":
-            result_text = "📋 멀티턴 개별 평가 대기 중\n\n활성화된 멀티턴 세션이 없습니다."
-
-        return jsonify({
-            "success": True,
-            "result": result_text,
-            "message": "멀티턴 개별 평가 완료",
-            "debug_info": {
-                "has_manager": bool(manager),
-                "has_current_session": bool(manager.current_session),
-                "session_id": manager.current_session.session_id if manager.current_session else None,
-                "session_file_exists": os.path.exists(manager.session_file)
-            }
-        })
-
-    except Exception as e:
-        print(f"❌ 개별평가 오류: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({
-            "success": False,
-            "error": f"멀티턴 개별평가 중 오류 발생: {str(e)}"
-        })
-
-
-# === 3. 새로운 엔드포인트 추가: 세션 시작 ===
-@app.route('/start_session', methods=['POST'])
-def start_session():
-    """새로운 멀티턴 세션 시작 API"""
-    try:
-        data = request.json or {}
-        max_turns = data.get('max_turns', 5)  # 기본 5턴
-
-        # 턴 수 검증
-        if not isinstance(max_turns, int) or max_turns < 1 or max_turns > 20:
-            return jsonify({
-                "success": False,
-                "error": "턴 수는 1~20 사이의 숫자여야 합니다."
-            })
-
-        # 멀티턴 관리자 확인
-        if not hasattr(sql_evaluator, 'multiturn_manager') or not sql_evaluator.multiturn_manager:
-            return jsonify({
-                "success": False,
-                "error": "멀티턴 평가 관리자가 초기화되지 않았습니다."
-            })
-
-        # 새 세션 시작
-        session_id = start_multiturn_session(max_turns=max_turns)
-
-        if session_id:
-            return jsonify({
-                "success": True,
-                "session_id": session_id,
-                "max_turns": max_turns,
-                "message": f"새 멀티턴 세션이 시작되었습니다: {session_id} ({max_turns}턴)"
-            })
-        else:
-            return jsonify({
-                "success": False,
-                "error": "세션 시작에 실패했습니다."
-            })
-
-    except Exception as e:
-        return jsonify({
-            "success": False,
-            "error": f"세션 시작 중 오류 발생: {str(e)}"
-        })
-
-@app.route('/overall_evaluation', methods=['POST'])
-def overall_evaluation():
-    """
-    멀티턴 전체 평가 엔드포인트 - 완료된 세션들의 통계 분석만
-    진행 중 세션이 있으면 경고 메시지 표시
-    """
-    try:
-        # 멀티턴 관리자 확인
-        if not hasattr(sql_evaluator, 'multiturn_manager') or not sql_evaluator.multiturn_manager:
-            return jsonify({
-                "success": False,
-                "error": "멀티턴 평가 관리자가 초기화되지 않았습니다."
-            })
-
-        # === 🔥 핵심 개선: 진행 중 세션 확인 ===
-        current_session = sql_evaluator.multiturn_manager.current_session
-        has_active_session = (current_session and current_session.status == "진행중")
-
-        if has_active_session:
-            # 진행 중 세션이 있으면 경고와 함께 제한된 통계만 제공
-            warning_msg = f"⚠️  현재 진행 중인 세션이 있습니다: {current_session.session_id}\n"
-            warning_msg += f"   (Turn {len(current_session.turns)}/{current_session.max_turns})\n\n"
-            warning_msg += "완전한 전체 평가를 위해서는 현재 세션을 완료하세요.\n"
-            warning_msg += "(정답 달성 또는 턴 제한 도달)\n\n"
-            warning_msg += "--- 기존 완료 세션들의 제한된 통계 ---\n\n"
-
-            # 완료된 세션들만으로 통계 생성
-            result = sql_evaluator.multiturn_manager.generate_multiturn_aggregate_report()
-
-            return jsonify({
-                "success": True,
-                "result": warning_msg + result,
-                "message": "제한된 전체 평가 (진행 중 세션 있음)",
-                "has_active_session": True,  # 🔥 활성 세션 플래그
-                "active_session_id": current_session.session_id
-            })
-        else:
-            # 진행 중 세션이 없으면 정상적인 전체 평가
-            result = sql_evaluator.multiturn_manager.generate_multiturn_aggregate_report()
-
-            return jsonify({
-                "success": True,
-                "result": result,
-                "message": "멀티턴 전체 평가 완료",
-                "has_active_session": False  # 🔥 비활성 세션 플래그
-            })
-
-    except Exception as e:
-        return jsonify({
-            "success": False,
-            "error": f"멀티턴 전체평가 중 오류 발생: {str(e)}",
-            "has_active_session": False
-        })
-
-
-# === 5. 기존 session_status 엔드포인트 업데이트 (있는 경우) ===
-@app.route('/session_status', methods=['GET'])
-def session_status():
-    """현재 멀티턴 세션 상태 조회 API"""
-    try:
-        if not hasattr(sql_evaluator, 'multiturn_manager') or not sql_evaluator.multiturn_manager:
-            return jsonify({
-                "success": False,
-                "error": "멀티턴 평가 관리자가 초기화되지 않았습니다."
-            })
-
-        current_session = sql_evaluator.multiturn_manager.current_session
-
-        if current_session and current_session.status == "진행중":
-            return jsonify({
-                "success": True,
-                "has_session": True,
-                "session_info": {
-                    "session_id": current_session.session_id,
-                    "status": current_session.status,
-                    "turns": len(current_session.turns),
-                    "max_turns": current_session.max_turns
-                }
-            })
-        else:
-            return jsonify({
-                "success": True,
-                "has_session": False,
-                "session_info": None
-            })
-
-    except Exception as e:
-        return jsonify({
-            "success": False,
-            "error": f"세션 상태 조회 중 오류: {str(e)}",
-            "has_session": False
-        })
-
-# === 4. 기존 finish_session 엔드포인트 수정 (있는 경우) ===
-@app.route('/finish_session', methods=['POST'])
-def finish_session():
-    """현재 멀티턴 세션 완료 API"""
-    try:
-        if not hasattr(sql_evaluator, 'multiturn_manager') or not sql_evaluator.multiturn_manager:
-            return jsonify({
-                "success": False,
-                "error": "멀티턴 평가 관리자가 초기화되지 않았습니다."
-            })
-
-        current_session = sql_evaluator.multiturn_manager.current_session
-
-        if current_session and current_session.status == "진행중":
-            session_id = current_session.session_id
-            sql_evaluator.multiturn_manager.finish_current_session()
-
-            return jsonify({
-                "success": True,
-                "message": f"세션 {session_id}이 완료되었습니다.",
-                "finished_session_id": session_id
-            })
-        else:
-            return jsonify({
-                "success": False,
-                "error": "완료할 활성 세션이 없습니다."
-            })
-
-    except Exception as e:
-        return jsonify({
-            "success": False,
-            "error": f"세션 완료 중 오류: {str(e)}"
-        })
-
-
-@app.route('/token_statistics', methods=['GET'])
-def token_statistics():
-    """토큰 사용량 통계 조회 API"""
-    try:
-        stats = get_token_statistics()
-        return jsonify({
-            "success": True,
-            "data": stats
-        })
-    except Exception as e:
-        print(f"❌ 토큰 통계 조회 오류: {e}")
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        })
-
-
-@app.route('/evaluation_export', methods=['GET'])
-def evaluation_export():
-    """평가 결과 CSV 내보내기"""
-    try:
-        import csv
-        import io
-        from datetime import datetime
-
-        # 모든 평가 결과 조회
-        evaluations = sql_evaluator.get_all_evaluations()
-
-        if not evaluations:
-            return jsonify({
-                "success": False,
-                "error": "내보낼 평가 결과가 없습니다."
-            })
-
-        # CSV 생성
-        output = io.StringIO()
-        fieldnames = [
-            'id', 'timestamp', 'user_question', 'generated_sql',
-            'syntax_correct', 'execution_success', 'result_count',
-            'has_error', 'exact_match', 'execution_match'
-        ]
-
-        writer = csv.DictWriter(output, fieldnames=fieldnames)
-        writer.writeheader()
-
-        for eval_data in evaluations:
-            row = {
-                'id': eval_data.get('id', ''),
-                'timestamp': eval_data.get('timestamp', ''),
-                'user_question': eval_data.get('user_question', ''),
-                'generated_sql': eval_data.get('generated_sql', ''),
-                'syntax_correct': eval_data.get('syntax_correct', ''),
-                'execution_success': eval_data.get('execution_success', ''),
-                'result_count': eval_data.get('result_count', 0),
-                'has_error': eval_data.get('has_error', ''),
-                'exact_match': eval_data.get('gold_comparison', {}).get('exact_match', ''),
-                'execution_match': eval_data.get('gold_comparison', {}).get('execution_match', '')
-            }
-            writer.writerow(row)
-
-        output.seek(0)
-
-        return output.getvalue(), 200, {
-            'Content-Type': 'text/csv; charset=utf-8',
-            'Content-Disposition': f'attachment; filename="evaluation_results_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv"'
-        }
-
-    except Exception as e:
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        })
-
-
-@app.route('/end_session', methods=['POST'])
-def end_session():
-    """멀티턴 세션 수동 종료"""
-    try:
-        if (hasattr(sql_evaluator, 'multiturn_manager') and
-                sql_evaluator.multiturn_manager and
-                sql_evaluator.multiturn_manager.current_session):
-
-            session_id = sql_evaluator.multiturn_manager.current_session.session_id
-            sql_evaluator.multiturn_manager.finish_current_session()
-
-            return jsonify({
-                "success": True,
-                "message": f"세션 {session_id}이 종료되었습니다."
-            })
-        else:
-            return jsonify({
-                "success": False,
-                "message": "종료할 활성 세션이 없습니다."
-            })
-    except Exception as e:
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        })
+# # === 평가 관련 엔드포인트 추가 ===
+# @app.route('/individual_evaluation', methods=['POST'])
+# def individual_evaluation():
+#     try:
+#         data = request.json or {}
+#         provided_gold_sql = data.get('gold_sql', '')
+#         user_question = data.get('user_question', '')
+#
+#         # 멀티턴 관리자 확인
+#         if not hasattr(sql_evaluator, 'multiturn_manager') or not sql_evaluator.multiturn_manager:
+#             return jsonify({
+#                 "success": False,
+#                 "error": "멀티턴 평가 관리자가 초기화되지 않았습니다."
+#             })
+#
+#         manager = sql_evaluator.multiturn_manager
+#
+#         # 🔥 현재 세션 상태 디버깅
+#         print(f"🔍 [DEBUG] 개별평가 요청 - 현재 세션: {manager.current_session}")
+#         if manager.current_session:
+#             print(f"🔍 [DEBUG] 세션 ID: {manager.current_session.session_id}")
+#             print(f"🔍 [DEBUG] 세션 상태: {manager.current_session.status}")
+#             print(f"🔍 [DEBUG] 턴 수: {len(manager.current_session.turns)}")
+#
+#         # 결과 생성 (없으면 강제 생성)
+#         if manager.current_session:
+#             result_text = manager.generate_multiturn_evaluation_report()
+#         else:
+#             # 파일에서 최근 세션 로드해서 결과 생성
+#             try:
+#                 if os.path.exists(manager.session_file):
+#                     with open(manager.session_file, 'r', encoding='utf-8') as f:
+#                         data = json.load(f)
+#                     sessions = data.get('multiturn_sessions', [])
+#                     if sessions:
+#                         # 가장 최근 세션으로 결과 생성
+#                         latest_session = sessions[-1]
+#                         from evaluation_module import MultiTurnSession
+#                         session_obj = MultiTurnSession(latest_session['session_id'], latest_session['max_turns'])
+#                         session_obj.turns = latest_session['turns']
+#                         session_obj.status = latest_session['status']
+#                         result_text = manager._format_individual_evaluation_report(session_obj)
+#                     else:
+#                         result_text = "📋 평가할 세션이 없습니다. 새 세션을 시작하세요."
+#                 else:
+#                     result_text = "📋 세션 파일이 없습니다. 새 세션을 시작하세요."
+#             except Exception as file_error:
+#                 result_text = f"📋 세션 파일 로드 실패: {file_error}"
+#
+#         # 결과가 여전히 비어있으면 기본 메시지
+#         if not result_text or result_text.strip() == "":
+#             result_text = "📋 멀티턴 개별 평가 대기 중\n\n활성화된 멀티턴 세션이 없습니다."
+#
+#         return jsonify({
+#             "success": True,
+#             "result": result_text,
+#             "message": "멀티턴 개별 평가 완료",
+#             "debug_info": {
+#                 "has_manager": bool(manager),
+#                 "has_current_session": bool(manager.current_session),
+#                 "session_id": manager.current_session.session_id if manager.current_session else None,
+#                 "session_file_exists": os.path.exists(manager.session_file)
+#             }
+#         })
+#
+#     except Exception as e:
+#         print(f"❌ 개별평가 오류: {e}")
+#         import traceback
+#         traceback.print_exc()
+#         return jsonify({
+#             "success": False,
+#             "error": f"멀티턴 개별평가 중 오류 발생: {str(e)}"
+#         })
+#
+#
+# # === 3. 새로운 엔드포인트 추가: 세션 시작 ===
+# @app.route('/start_session', methods=['POST'])
+# def start_session():
+#     """새로운 멀티턴 세션 시작 API"""
+#     try:
+#         data = request.json or {}
+#         max_turns = data.get('max_turns', 5)  # 기본 5턴
+#
+#         # 턴 수 검증
+#         if not isinstance(max_turns, int) or max_turns < 1 or max_turns > 20:
+#             return jsonify({
+#                 "success": False,
+#                 "error": "턴 수는 1~20 사이의 숫자여야 합니다."
+#             })
+#
+#         # 멀티턴 관리자 확인
+#         if not hasattr(sql_evaluator, 'multiturn_manager') or not sql_evaluator.multiturn_manager:
+#             return jsonify({
+#                 "success": False,
+#                 "error": "멀티턴 평가 관리자가 초기화되지 않았습니다."
+#             })
+#
+#         # 새 세션 시작
+#         session_id = start_multiturn_session(max_turns=max_turns)
+#
+#         if session_id:
+#             return jsonify({
+#                 "success": True,
+#                 "session_id": session_id,
+#                 "max_turns": max_turns,
+#                 "message": f"새 멀티턴 세션이 시작되었습니다: {session_id} ({max_turns}턴)"
+#             })
+#         else:
+#             return jsonify({
+#                 "success": False,
+#                 "error": "세션 시작에 실패했습니다."
+#             })
+#
+#     except Exception as e:
+#         return jsonify({
+#             "success": False,
+#             "error": f"세션 시작 중 오류 발생: {str(e)}"
+#         })
+#
+# @app.route('/overall_evaluation', methods=['POST'])
+# def overall_evaluation():
+#     """
+#     멀티턴 전체 평가 엔드포인트 - 완료된 세션들의 통계 분석만
+#     진행 중 세션이 있으면 경고 메시지 표시
+#     """
+#     try:
+#         # 멀티턴 관리자 확인
+#         if not hasattr(sql_evaluator, 'multiturn_manager') or not sql_evaluator.multiturn_manager:
+#             return jsonify({
+#                 "success": False,
+#                 "error": "멀티턴 평가 관리자가 초기화되지 않았습니다."
+#             })
+#
+#         # === 🔥 핵심 개선: 진행 중 세션 확인 ===
+#         current_session = sql_evaluator.multiturn_manager.current_session
+#         has_active_session = (current_session and current_session.status == "진행중")
+#
+#         if has_active_session:
+#             # 진행 중 세션이 있으면 경고와 함께 제한된 통계만 제공
+#             warning_msg = f"⚠️  현재 진행 중인 세션이 있습니다: {current_session.session_id}\n"
+#             warning_msg += f"   (Turn {len(current_session.turns)}/{current_session.max_turns})\n\n"
+#             warning_msg += "완전한 전체 평가를 위해서는 현재 세션을 완료하세요.\n"
+#             warning_msg += "(정답 달성 또는 턴 제한 도달)\n\n"
+#             warning_msg += "--- 기존 완료 세션들의 제한된 통계 ---\n\n"
+#
+#             # 완료된 세션들만으로 통계 생성
+#             result = sql_evaluator.multiturn_manager.generate_multiturn_aggregate_report()
+#
+#             return jsonify({
+#                 "success": True,
+#                 "result": warning_msg + result,
+#                 "message": "제한된 전체 평가 (진행 중 세션 있음)",
+#                 "has_active_session": True,  # 🔥 활성 세션 플래그
+#                 "active_session_id": current_session.session_id
+#             })
+#         else:
+#             # 진행 중 세션이 없으면 정상적인 전체 평가
+#             result = sql_evaluator.multiturn_manager.generate_multiturn_aggregate_report()
+#
+#             return jsonify({
+#                 "success": True,
+#                 "result": result,
+#                 "message": "멀티턴 전체 평가 완료",
+#                 "has_active_session": False  # 🔥 비활성 세션 플래그
+#             })
+#
+#     except Exception as e:
+#         return jsonify({
+#             "success": False,
+#             "error": f"멀티턴 전체평가 중 오류 발생: {str(e)}",
+#             "has_active_session": False
+#         })
+#
+#
+# # === 5. 기존 session_status 엔드포인트 업데이트 (있는 경우) ===
+# @app.route('/session_status', methods=['GET'])
+# def session_status():
+#     """현재 멀티턴 세션 상태 조회 API"""
+#     try:
+#         if not hasattr(sql_evaluator, 'multiturn_manager') or not sql_evaluator.multiturn_manager:
+#             return jsonify({
+#                 "success": False,
+#                 "error": "멀티턴 평가 관리자가 초기화되지 않았습니다."
+#             })
+#
+#         current_session = sql_evaluator.multiturn_manager.current_session
+#
+#         if current_session and current_session.status == "진행중":
+#             return jsonify({
+#                 "success": True,
+#                 "has_session": True,
+#                 "session_info": {
+#                     "session_id": current_session.session_id,
+#                     "status": current_session.status,
+#                     "turns": len(current_session.turns),
+#                     "max_turns": current_session.max_turns
+#                 }
+#             })
+#         else:
+#             return jsonify({
+#                 "success": True,
+#                 "has_session": False,
+#                 "session_info": None
+#             })
+#
+#     except Exception as e:
+#         return jsonify({
+#             "success": False,
+#             "error": f"세션 상태 조회 중 오류: {str(e)}",
+#             "has_session": False
+#         })
+#
+# # === 4. 기존 finish_session 엔드포인트 수정 (있는 경우) ===
+# @app.route('/finish_session', methods=['POST'])
+# def finish_session():
+#     """현재 멀티턴 세션 완료 API"""
+#     try:
+#         if not hasattr(sql_evaluator, 'multiturn_manager') or not sql_evaluator.multiturn_manager:
+#             return jsonify({
+#                 "success": False,
+#                 "error": "멀티턴 평가 관리자가 초기화되지 않았습니다."
+#             })
+#
+#         current_session = sql_evaluator.multiturn_manager.current_session
+#
+#         if current_session and current_session.status == "진행중":
+#             session_id = current_session.session_id
+#             sql_evaluator.multiturn_manager.finish_current_session()
+#
+#             return jsonify({
+#                 "success": True,
+#                 "message": f"세션 {session_id}이 완료되었습니다.",
+#                 "finished_session_id": session_id
+#             })
+#         else:
+#             return jsonify({
+#                 "success": False,
+#                 "error": "완료할 활성 세션이 없습니다."
+#             })
+#
+#     except Exception as e:
+#         return jsonify({
+#             "success": False,
+#             "error": f"세션 완료 중 오류: {str(e)}"
+#         })
+#
+#
+# @app.route('/token_statistics', methods=['GET'])
+# def token_statistics():
+#     """토큰 사용량 통계 조회 API"""
+#     try:
+#         stats = get_token_statistics()
+#         return jsonify({
+#             "success": True,
+#             "data": stats
+#         })
+#     except Exception as e:
+#         print(f"❌ 토큰 통계 조회 오류: {e}")
+#         return jsonify({
+#             "success": False,
+#             "error": str(e)
+#         })
+#
+#
+# @app.route('/evaluation_export', methods=['GET'])
+# def evaluation_export():
+#     """평가 결과 CSV 내보내기"""
+#     try:
+#         import csv
+#         import io
+#         from datetime import datetime
+#
+#         # 모든 평가 결과 조회
+#         evaluations = sql_evaluator.get_all_evaluations()
+#
+#         if not evaluations:
+#             return jsonify({
+#                 "success": False,
+#                 "error": "내보낼 평가 결과가 없습니다."
+#             })
+#
+#         # CSV 생성
+#         output = io.StringIO()
+#         fieldnames = [
+#             'id', 'timestamp', 'user_question', 'generated_sql',
+#             'syntax_correct', 'execution_success', 'result_count',
+#             'has_error', 'exact_match', 'execution_match'
+#         ]
+#
+#         writer = csv.DictWriter(output, fieldnames=fieldnames)
+#         writer.writeheader()
+#
+#         for eval_data in evaluations:
+#             row = {
+#                 'id': eval_data.get('id', ''),
+#                 'timestamp': eval_data.get('timestamp', ''),
+#                 'user_question': eval_data.get('user_question', ''),
+#                 'generated_sql': eval_data.get('generated_sql', ''),
+#                 'syntax_correct': eval_data.get('syntax_correct', ''),
+#                 'execution_success': eval_data.get('execution_success', ''),
+#                 'result_count': eval_data.get('result_count', 0),
+#                 'has_error': eval_data.get('has_error', ''),
+#                 'exact_match': eval_data.get('gold_comparison', {}).get('exact_match', ''),
+#                 'execution_match': eval_data.get('gold_comparison', {}).get('execution_match', '')
+#             }
+#             writer.writerow(row)
+#
+#         output.seek(0)
+#
+#         return output.getvalue(), 200, {
+#             'Content-Type': 'text/csv; charset=utf-8',
+#             'Content-Disposition': f'attachment; filename="evaluation_results_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv"'
+#         }
+#
+#     except Exception as e:
+#         return jsonify({
+#             "success": False,
+#             "error": str(e)
+#         })
+#
+#
+# @app.route('/end_session', methods=['POST'])
+# def end_session():
+#     """멀티턴 세션 수동 종료"""
+#     try:
+#         if (hasattr(sql_evaluator, 'multiturn_manager') and
+#                 sql_evaluator.multiturn_manager and
+#                 sql_evaluator.multiturn_manager.current_session):
+#
+#             session_id = sql_evaluator.multiturn_manager.current_session.session_id
+#             sql_evaluator.multiturn_manager.finish_current_session()
+#
+#             return jsonify({
+#                 "success": True,
+#                 "message": f"세션 {session_id}이 종료되었습니다."
+#             })
+#         else:
+#             return jsonify({
+#                 "success": False,
+#                 "message": "종료할 활성 세션이 없습니다."
+#             })
+#     except Exception as e:
+#         return jsonify({
+#             "success": False,
+#             "error": str(e)
+#         })
 
 # === 평가 엔드포인트 끝 ===
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000, debug=True)
-
