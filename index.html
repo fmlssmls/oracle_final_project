@@ -1678,7 +1678,7 @@ function sendMessage() {
   last_columns = [];
   document.getElementById('result-panel').style.display = 'none';
   appendLoading();
-  fetch('https://oracle-final-project.onrender.com/chat', {
+  fetch('https://oracle-final-project-1.onrender.com/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ message: msg, chat_history }),
@@ -1805,7 +1805,7 @@ function handleLoginAction() {
   }
   document.getElementById('login-msg').textContent = "";
   if (loginMode === 'login') {
-    fetch('https://oracle-final-project.onrender.com/login', {
+    fetch('https://oracle-final-project-1.onrender.com/login', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ user_id: id, user_pw: pw })
@@ -1839,7 +1839,7 @@ function handleLoginAction() {
       setAppVisible(false);
     });
   } else { // 회원가입 로직
-    fetch('https://oracle-final-project.onrender.com/signup', {
+    fetch('https://oracle-final-project-1.onrender.com/signup', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ user_id: id, user_pw: pw })
@@ -1961,7 +1961,7 @@ document.getElementById('pwchange-submit').onclick = function() {
     return;
   }
 
-  fetch('https://oracle-final-project.onrender.com/change_pw', {
+  fetch('https://oracle-final-project-1.onrender.com/change_pw', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({
@@ -2424,7 +2424,7 @@ window.saveSettings = function() {
     localStorage.setItem('columnSettings', JSON.stringify(settings));
 
 
-    fetch('https://oracle-final-project.onrender.com/api/save_column_settings', {
+    fetch('https://oracle-final-project-1.onrender.com/api/save_column_settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings)
@@ -2474,4 +2474,5 @@ window.applySettings = function() {
 </script>
 </body>
 </html>
+
 <!--복사확인용-->
