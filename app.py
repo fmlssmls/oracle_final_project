@@ -774,7 +774,7 @@ def get_db_connection():
     """Oracle Cloud Autonomous Database 연결 (Wallet 사용)"""
     try:
         # Wallet 경로 - Render 환경 변수에서 가져옴
-        wallet_location = os.getenv("WALLET_LOCATION", "./wallet")
+        wallet_location = os.getenv("WALLET_LOCATION", "/app/wallet")
         wallet_password = os.getenv("WALLET_PASSWORD", "")
 
         # TNS_ADMIN 환경 변수 설정 (Wallet 폴더 위치)
@@ -1397,6 +1397,7 @@ def index():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000, debug=True)
+
 
 
 
