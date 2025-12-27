@@ -31,12 +31,13 @@ import json
 print("🔥 평가 모듈 import 완료")
 
 app = Flask(__name__)
-# 🔥 CORS 설정 강화
+# CORS 설정 강화
 CORS(app, resources={
     r"/*": {
-        "origins": "*",
+        "origins": ["https://gregarious-dasik-eb3f31.netlify.app", "*"],
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"]
+        "allow_headers": ["Content-Type", "Authorization"],
+        "supports_credentials": True
     }
 })
 
@@ -1397,6 +1398,7 @@ def index():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000, debug=True)
+
 
 
 
