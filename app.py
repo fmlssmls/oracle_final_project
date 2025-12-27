@@ -3,42 +3,21 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import cx_Oracle
 from langchain_openai import ChatOpenAI
-from langchain_chroma import Chroma
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain.memory import ConversationBufferMemory
-from langchain.prompts import PromptTemplate
 import re
-import time
-from datetime import datetime
 import bcrypt
-import json
 
 from column_manager import ColumnManager, column_manager
 
 print("🔥 모듈 import 완료")
 
 app = Flask(__name__)
-
-# CORS 설정
 CORS(app, origins="*", supports_credentials=True)
 
-# LangChain 초기화
+# LLM만 초기화 (ChromaDB 제거)
 llm = ChatOpenAI(
     model="gpt-4o",
     temperature=0,
     openai_api_key=os.getenv("OPENAI_API_KEY")
-)
-
-embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-vectorstore = Chroma(
-    persist_directory="./chroma_db",
-    embedding_function=embeddings
-)
-
-memory = ConversationBufferMemory(
-    memory_key="chat_history",
-    return_messages=True,
-    output_key="answer"
 )
 
 
@@ -295,19 +274,13 @@ def chat():
             "columns": []
         })
 
-    # RAG 검색
-    rag_docs = vectorstore.similarity_search(user_msg, k=3)
-    context = "\n".join([doc.page_content for doc in rag_docs])
-
     # 선택된 컬럼 가져오기
     selected_cols = column_manager.get_selected_columns()
     col_hint = f"\n사용 가능 컬럼: {', '.join(selected_cols)}" if selected_cols else ""
 
-    # 프롬프트 생성
+    # 프롬프트 생성 (RAG 제거, 직접 프롬프트만)
     prompt_template = f"""당신은 MIMIC-IV 의료 데이터베이스 전문가입니다.
 
-참고 정보:
-{context}
 {col_hint}
 
 대화 기록:
