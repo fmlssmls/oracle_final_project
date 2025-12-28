@@ -99,6 +99,15 @@ def execute_sql(sql):
         conn.close()
 
 
+# CORS preflight 명시적 처리
+@app.route('/login', methods=['OPTIONS'])
+def login_options():
+    response = jsonify({'status': 'ok'})
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'POST,OPTIONS')
+    return response
+
 @app.route('/login', methods=['POST'])
 def login():
     data = request.json
@@ -396,5 +405,6 @@ def index():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000, debug=True)
+
 
 
