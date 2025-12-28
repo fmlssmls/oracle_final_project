@@ -13,6 +13,10 @@ print("🔥 모듈 import 완료")
 app = Flask(__name__)
 CORS(app, origins="*", supports_credentials=True)
 
+# 환경변수 검증 추가
+if not OPENAI_API_KEY:
+    raise ValueError("❌ OPENAI_API_KEY 환경변수가 설정되지 않았습니다!")
+
 # LLM만 초기화 (ChromaDB 제거)
 llm = ChatOpenAI(
     model="gpt-4o",
@@ -392,4 +396,5 @@ def index():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000, debug=True)
+
 
