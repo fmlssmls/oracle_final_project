@@ -1,4 +1,8 @@
 import os
+
+# ✅ cx_Oracle import 전에 반드시 설정
+os.environ['LD_LIBRARY_PATH'] = '/instantclient_23_4'
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import cx_Oracle
@@ -410,6 +414,7 @@ def index():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000, debug=True)
+
 
 
 
