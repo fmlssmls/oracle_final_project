@@ -51,13 +51,13 @@ def get_db_connection():
         error_msg = f"❌ 데이터베이스 연결 오류: {error_obj.message}"
         print(error_msg)
         app.logger.error(error_msg)
-        return jsonify({"success": False, "message": "데이터베이스 오류"}), 500  # ✅ 수정
-
+        return None  # ✅ tuple이 아니라 None 리턴
+        
     except Exception as e:
         error_msg = f"❌ 예상치 못한 오류: {str(e)}"
         print(error_msg)
         app.logger.error(error_msg)
-        return jsonify({"success": False, "message": "서버 오류"}), 500  # ✅ 수정
+        return None  # ✅ tuple이 아니라 None 리턴
 
 
 def detect_user_intent(user_msg):
@@ -410,6 +410,7 @@ def index():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000, debug=True)
+
 
 
 
