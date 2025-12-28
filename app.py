@@ -130,11 +130,15 @@ def login():
             
     except cx_Oracle.Error as e:
         error_obj, = e.args
-        print(f"Oracle 오류 (로그인): {error_obj.message}")
-        return jsonify({"success": False, "message": "서버 오류: 데이터베이스 문제."}), 500
+        error_msg = f"❌ 데이터베이스 연결 오류: {error_obj.message}"
+        print(error_msg)
+        app.logger.error(error_msg)  # 추가
+        return None
     except Exception as e:
-        print(f"예상치 못한 오류 (로그인): {e}")
-        return jsonify({"success": False, "message": "서버 오류: 알 수 없는 문제."}), 500
+        error_msg = f"❌ 예상치 못한 오류: {str(e)}"
+        print(error_msg)
+        app.logger.error(error_msg)  # 추가
+        return None
     finally:
         if cursor:
             cursor.close()
@@ -388,3 +392,4 @@ def index():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000, debug=True)
+
