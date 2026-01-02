@@ -17,7 +17,4 @@ RUN pip3.9 install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# ✅ wallet 폴더 권한 설정 추가
-RUN chmod -R 755 /app/wallet
-
 CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:10000", "--timeout", "120"]
