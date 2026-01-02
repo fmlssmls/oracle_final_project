@@ -16,12 +16,18 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 if not OPENAI_API_KEY:
     raise ValueError("❌ OPENAI_API_KEY 환경변수가 설정되지 않았습니다!")
 
-# LLM만 초기화 (ChromaDB 제거)
-llm = ChatOpenAI(
-    model="gpt-4o",
-    temperature=0,
-    openai_api_key=OPENAI_API_KEY  # os.getenv(...) 대신 변수 사용
-)
+llm = None
+
+def get_llm():
+    """LLM lazy initialization"""
+    global llm
+    if llm is None:
+        llm = ChatOpenAI(
+            model="gpt-4o",
+            temperature=0,
+            openai_api_key=os.getenv("OPENAI_API_KEY")
+        )
+    return llm
 
 
 def get_db_connection():
@@ -295,7 +301,7 @@ def chat():
 Oracle SQL 쿼리를 생성하세요. SELECT 문만 작성하고, 컬럼명은 대문자로 작성하세요."""
 
     # LLM 호출
-    llm_answer = llm.invoke(prompt_template).content
+    llm_answer = get_llm().invoke(prompt_template).content
     guide, sql = extract_sql_and_guide(llm_answer)
 
     # SQL 실행
@@ -315,7 +321,7 @@ Oracle SQL 쿼리를 생성하세요. SELECT 문만 작성하고, 컬럼명은 �
 결과 개수: {len(all_rows)}개
 컬럼: {', '.join(columns)}"""
                 
-                report_resp = llm.invoke(report_prompt)
+                report_resp = get_llm().invoke(report_prompt)
                 summary_text = getattr(report_resp, "content", str(report_resp)).strip()
                 report_text = f"{summary_text}\n(자세한 정보와 표는 '결과창'에서 확인하세요.)"
             else:
@@ -392,6 +398,7 @@ def index():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000, debug=True)
+
 
 
 
