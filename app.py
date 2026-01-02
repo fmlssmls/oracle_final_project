@@ -35,35 +35,22 @@ def get_db_connection():
     """Oracle Cloud Autonomous Database 연결"""
     try:
         wallet_location = os.getenv("WALLET_LOCATION", "/app/wallet")
-        wallet_password = os.getenv("WALLET_PASSWORD", "")
-        os.environ["TNS_ADMIN"] = wallet_location
-
-        service_name = os.getenv("ORACLE_SERVICE_NAME", "oraclefinalproject_high")
-        username = os.getenv("ORACLE_USER", "ADMIN")
-        password = os.getenv("ORACLE_PW")
-
-        conn = cx_Oracle.connect(
-            user=username,
-            password=password,
-            dsn=service_name,
-            encoding="UTF-8"
-        )
-
-        print(f"✅ Oracle Cloud DB 연결 성공: {service_name}")
-        return conn
-
-    except cx_Oracle.Error as e:
-        error_obj, = e.args
-        error_msg = f"❌ 데이터베이스 연결 오류: {error_obj.message}"
-        print(error_msg)
-        app.logger.error(error_msg)
-        return None  # ✅ tuple이 아니라 None 리턴
         
+        conn = oracledb.connect(
+            user=os.getenv("ORACLE_USER", "ADMIN"),
+            password=os.getenv("ORACLE_PW"),
+            dsn=os.getenv("ORACLE_SERVICE_NAME", "oraclefinalproject_high"),
+            config_dir=wallet_location,
+            wallet_location=wallet_location,
+            wallet_password=os.getenv("WALLET_PASSWORD", "")
+        )
+        
+        print(f"✅ Oracle Cloud DB 연결 성공")
+        return conn
     except Exception as e:
-        error_msg = f"❌ 예상치 못한 오류: {str(e)}"
-        print(error_msg)
-        app.logger.error(error_msg)
-        return None  # ✅ tuple이 아니라 None 리턴
+        print(f"❌ 데이터베이스 연결 오류: {e}")
+        app.logger.error(f"❌ 데이터베이스 연결 오류: {e}")
+        return None
 
 
 def detect_user_intent(user_msg):
@@ -412,6 +399,7 @@ def index():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000, debug=True)
+
 
 
 
