@@ -1,14 +1,7 @@
 import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import oracledb  # ← cx_Oracle 대신
-
-# ✅ cx_Oracle 명시적 초기화
-try:
-    cx_Oracle.init_oracle_client(lib_dir="/instantclient_23_4")
-except Exception as e:
-    print(f"Oracle Client 이미 초기화됨 또는 에러: {e}")
-
+import oracledb  # ← 변경
 from langchain_openai import ChatOpenAI
 import re
 import bcrypt
@@ -399,6 +392,7 @@ def index():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000, debug=True)
+
 
 
 
