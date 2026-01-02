@@ -1,4 +1,8 @@
 import os
+
+# ✅ cx_Oracle import 전에 먼저 설정
+os.environ["TNS_ADMIN"] = os.getenv("WALLET_LOCATION", "/app/wallet")
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import cx_Oracle  # oracledb → cx_Oracle로 변경
@@ -32,10 +36,7 @@ def get_llm():
 
 def get_db_connection():
     """Oracle Cloud Autonomous Database 연결"""
-    try:
-        wallet_location = os.getenv("WALLET_LOCATION", "/app/wallet")
-        os.environ["TNS_ADMIN"] = wallet_location
-        
+    try:        
         conn = cx_Oracle.connect(
             user=os.getenv("ORACLE_USER", "ADMIN"),
             password=os.getenv("ORACLE_PW"),
@@ -405,6 +406,7 @@ def index():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000, debug=True)
+
 
 
 
