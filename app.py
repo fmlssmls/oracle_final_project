@@ -33,12 +33,18 @@ def get_llm():
 def get_db_connection():
     """Oracle Cloud Autonomous Database 연결"""
     try:
+        # ✅ tnsnames.ora에 있는 전체 연결 문자열 사용
+        dsn_str = """(description= (retry_count=20)(retry_delay=3)
+            (address=(protocol=tcps)(port=1522)(host=adb.us-chicago-1.oraclecloud.com))
+            (connect_data=(service_name=g4287097880f28b_oraclefinalproject_high.adb.oraclecloud.com))
+            (security=(ssl_server_dn_match=yes)))"""
+        
         wallet_location = os.getenv("WALLET_LOCATION", "/app/wallet")
         
         conn = oracledb.connect(
             user=os.getenv("ORACLE_USER", "ADMIN"),
             password=os.getenv("ORACLE_PW"),
-            dsn=os.getenv("ORACLE_SERVICE_NAME", "oraclefinalproject_high"),
+            dsn=dsn_str,
             config_dir=wallet_location,
             wallet_location=wallet_location,
             wallet_password=os.getenv("WALLET_PASSWORD", "")
@@ -47,8 +53,9 @@ def get_db_connection():
         print(f"✅ Oracle Cloud DB 연결 성공")
         return conn
     except Exception as e:
-        print(f"❌ 데이터베이스 연결 오류: {e}")
-        app.logger.error(f"❌ 데이터베이스 연결 오류: {e}")
+        error_msg = f"❌ 데이터베이스 연결 오류: {e}"
+        print(error_msg)
+        app.logger.error(error_msg)
         return None
 
 
@@ -398,6 +405,7 @@ def index():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000, debug=True)
+
 
 
 
