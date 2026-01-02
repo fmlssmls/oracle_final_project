@@ -156,18 +156,14 @@ def login():
         error_obj, = e.args
         error_msg = f"❌ 데이터베이스 연결 오류: {error_obj.message}"
         print(error_msg)
-        app.logger.error(error_msg)  # 추가
-        return None
+        app.logger.error(error_msg)
+        return jsonify({"success": False, "message": "데이터베이스 오류"}), 500  # ✅ 반드시 jsonify!
+        
     except Exception as e:
         error_msg = f"❌ 예상치 못한 오류: {str(e)}"
         print(error_msg)
-        app.logger.error(error_msg)  # 추가
-        return None
-    finally:
-        if cursor:
-            cursor.close()
-        if conn:
-            conn.close()
+        app.logger.error(error_msg)
+        return jsonify({"success": False, "message": "서버 오류"}), 500  # ✅ 반드시 jsonify!
 
 
 @app.route('/signup', methods=['POST'])
@@ -416,6 +412,7 @@ def index():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000, debug=True)
+
 
 
 
