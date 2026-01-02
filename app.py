@@ -132,7 +132,7 @@ def login():
         else:
             return jsonify({"success": False, "message": "로그인 정보가 올바르지 않습니다."})
             
-    except cx_Oracle.Error as e:
+    except oracledb.Error as e:
         error_obj, = e.args
         error_msg = f"❌ 데이터베이스 연결 오류: {error_obj.message}"
         print(error_msg)
@@ -175,7 +175,7 @@ def signup():
         
         return jsonify({"success": True})
         
-    except cx_Oracle.Error as e:
+    except oracledb.Error as e:
         error_obj, = e.args
         print(f"Oracle 오류 (회원가입): {error_obj.message}")
         if conn:
@@ -392,6 +392,7 @@ def index():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000, debug=True)
+
 
 
 
