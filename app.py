@@ -1,15 +1,17 @@
 import os
-
-# ✅ cx_Oracle import 전에 반드시 설정
-os.environ['LD_LIBRARY_PATH'] = '/instantclient_23_4'
-
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import cx_Oracle
+
+# ✅ cx_Oracle 명시적 초기화
+try:
+    cx_Oracle.init_oracle_client(lib_dir="/instantclient_23_4")
+except Exception as e:
+    print(f"Oracle Client 이미 초기화됨 또는 에러: {e}")
+
 from langchain_openai import ChatOpenAI
 import re
 import bcrypt
-
 from column_manager import ColumnManager, column_manager
 
 print("🔥 모듈 import 완료")
@@ -414,6 +416,7 @@ def index():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000, debug=True)
+
 
 
 
