@@ -8,6 +8,9 @@ RUN microdnf install -y \
     python39-pip \
     && microdnf clean all
 
+# ✅ 이 줄 추가
+RUN pip3.9 install --upgrade pip
+
 WORKDIR /app
 
 COPY requirements.txt .
