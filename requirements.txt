@@ -1,6 +1,6 @@
 flask==3.0.0
 flask-cors==4.0.0
-cx-Oracle==8.3.0
+oracledb  # ← cx-Oracle 대신
 langchain-openai==0.2.0
 bcrypt==4.2.0
 gunicorn==21.2.0
