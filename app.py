@@ -1,7 +1,7 @@
 import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import oracledb  # ← 변경
+import cx_Oracle  # oracledb → cx_Oracle로 변경
 from langchain_openai import ChatOpenAI
 import re
 import bcrypt
@@ -33,27 +33,27 @@ def get_llm():
 def get_db_connection():
     """Oracle Cloud Autonomous Database 연결"""
     try:
-        # ✅ tnsnames.ora에 있는 전체 연결 문자열 사용
-        dsn_str = """(description= (retry_count=20)(retry_delay=3)
-            (address=(protocol=tcps)(port=1522)(host=adb.us-chicago-1.oraclecloud.com))
-            (connect_data=(service_name=g4287097880f28b_oraclefinalproject_high.adb.oraclecloud.com))
-            (security=(ssl_server_dn_match=yes)))"""
-        
         wallet_location = os.getenv("WALLET_LOCATION", "/app/wallet")
+        os.environ["TNS_ADMIN"] = wallet_location
         
-        conn = oracledb.connect(
+        conn = cx_Oracle.connect(
             user=os.getenv("ORACLE_USER", "ADMIN"),
             password=os.getenv("ORACLE_PW"),
-            dsn=dsn_str,
-            config_dir=wallet_location,
-            wallet_location=wallet_location,
-            wallet_password=os.getenv("WALLET_PASSWORD", "")
+            dsn=os.getenv("ORACLE_SERVICE_NAME", "oraclefinalproject_high"),
+            encoding="UTF-8"
         )
         
         print(f"✅ Oracle Cloud DB 연결 성공")
         return conn
+        
+    except cx_Oracle.Error as e:
+        error_obj, = e.args
+        error_msg = f"❌ 데이터베이스 연결 오류: {error_obj.message}"
+        print(error_msg)
+        app.logger.error(error_msg)
+        return None
     except Exception as e:
-        error_msg = f"❌ 데이터베이스 연결 오류: {e}"
+        error_msg = f"❌ 예상치 못한 오류: {str(e)}"
         print(error_msg)
         app.logger.error(error_msg)
         return None
@@ -145,7 +145,7 @@ def login():
         else:
             return jsonify({"success": False, "message": "로그인 정보가 올바르지 않습니다."})
             
-    except oracledb.Error as e:
+    except cx_Oracle.Error as e:
         error_obj, = e.args
         error_msg = f"❌ 데이터베이스 연결 오류: {error_obj.message}"
         print(error_msg)
@@ -188,7 +188,7 @@ def signup():
         
         return jsonify({"success": True})
         
-    except oracledb.Error as e:
+    except cx_Oracle.Error as e:
         error_obj, = e.args
         print(f"Oracle 오류 (회원가입): {error_obj.message}")
         if conn:
@@ -405,6 +405,7 @@ def index():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000, debug=True)
+
 
 
 
