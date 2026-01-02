@@ -6,6 +6,11 @@ RUN apt-get update && apt-get install -y \
     libaio1t64 \
     && rm -rf /var/lib/apt/lists/*
 
+# ✅ 심볼릭 링크 생성 (Debian Trixie 호환성)
+RUN if [ -f /usr/lib/x86_64-linux-gnu/libaio.so.1t64 ]; then \
+        ln -s /usr/lib/x86_64-linux-gnu/libaio.so.1t64 /usr/lib/x86_64-linux-gnu/libaio.so.1; \
+    fi
+
 RUN wget https://download.oracle.com/otn_software/linux/instantclient/2340000/instantclient-basic-linux.x64-23.4.0.24.05.zip \
     && unzip instantclient-basic-linux.x64-23.4.0.24.05.zip \
     && rm instantclient-basic-linux.x64-23.4.0.24.05.zip
