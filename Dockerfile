@@ -7,7 +7,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     wget \
     unzip \
-    libaio64 \
+    libaio1t64 \
     && rm -rf /var/lib/apt/lists/*
 
 # Oracle Instant Client 23.5 설치
