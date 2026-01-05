@@ -21,7 +21,14 @@ load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'your-secret-key-here')
-CORS(app)
+CORS(app, resources={
+    r"/*": {
+        "origins": ["https://gregarious-dasik-eb3f31.netlify.app"],
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"],
+        "supports_credentials": True
+    }
+})
 
 # OpenAI API 키 설정
 openai.api_key = os.getenv('OPENAI_API_KEY')
@@ -355,3 +362,4 @@ if __name__ == '__main__':
     # 로컬 개발 환경
     port = int(os.getenv('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
+
