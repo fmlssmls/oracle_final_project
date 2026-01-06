@@ -29,8 +29,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 애플리케이션 파일 복사
 COPY . .
 
-# 포트 노출
-EXPOSE 5000
-
-# 애플리케이션 실행
-CMD ["python", "app_portfolio_railway.py"]
+ENV PORT=5000
+CMD ["python", "app.py"]
