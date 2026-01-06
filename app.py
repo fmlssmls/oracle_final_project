@@ -549,5 +549,6 @@ def submit_procedure():
         return jsonify({"success": False, "message": f"서버 오류: {str(e)}"}), 500
 
 if __name__ == '__main__':
-    port = int(os.getenv('PORT', 5000))
+    port = int(os.getenv('PORT', 8080))
     app.run(host='0.0.0.0', port=port, debug=False)
+
