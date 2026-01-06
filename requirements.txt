@@ -1,9 +1,10 @@
 Flask==3.0.0
-gunicorn==21.2.0
 flask-cors==4.0.0
-cx_Oracle==8.3.0
-openai==1.54.4
-langchain==0.3.9
-langchain-openai==0.2.9
-python-dotenv==1.0.0
-Werkzeug==3.0.1
+cx-Oracle==8.3.0
+langchain==0.1.0
+langchain-openai==0.0.2
+langchain-community==0.0.13
+langchain-chroma==0.1.0
+langchain-huggingface==0.0.1
+chromadb==0.4.22
+bcrypt==4.1.2
