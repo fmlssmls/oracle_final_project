@@ -28,5 +28,4 @@ COPY . .
 # Wallet 디렉토리 생성
 RUN mkdir -p /app/wallet && chmod 755 /app/wallet
 
-ENV PORT=5000
-CMD ["python", "app.py"]
+CMD ["gunicorn", "-b", "0.0.0.0:$PORT", "app:app"]
