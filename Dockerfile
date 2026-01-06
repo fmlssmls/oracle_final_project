@@ -28,8 +28,5 @@ COPY . .
 # Wallet 디렉토리 생성
 RUN mkdir -p /app/wallet && chmod 755 /app/wallet
 
-# 포트 노출
-EXPOSE 5000
-
-# 애플리케이션 실행
+ENV PORT=5000
 CMD ["python", "app.py"]
